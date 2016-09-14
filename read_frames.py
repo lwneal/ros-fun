@@ -1,3 +1,4 @@
+import sys
 import os
 import time
 import tempfile
@@ -21,11 +22,22 @@ def init_model():
     global model
     model = Model('model.h5', batch_size=1)
 
-def run_model(image_filename):
+def run_model(image_filename, command):
     img = Image.open(image_filename)
     img.load()
-    question = 'Find the person'
-    return model.evaluate(img, question)
+    return model.evaluate(img, command)
+
+
+def draw_text(image_array, text):
+    from PIL import Image
+    from PIL import ImageFont
+    from PIL import ImageDraw
+    img = Image.fromarray(image_array).convert('RGB')
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.truetype("sans-serif.ttf", 16)
+    draw.rectangle((0, 0, img.width, 16), fill=(0,0,0,128))
+    draw.text((0, 0), text, (255,255,255), font=font)
+    return np.array(img)
 
 
 def jpg_to_numpy(jpg_data):
@@ -34,7 +46,9 @@ def jpg_to_numpy(jpg_data):
     return np.array(Image.open('/tmp/robot.jpg'))
 
 
+last_move_time = 0
 def image_callback(img):
+    global last_move_time
     start_time = time.time()
 
     #img_data = jpg_to_numpy(img.data)
@@ -42,67 +56,59 @@ def image_callback(img):
     with open('static/kinect.jpg', 'w') as fp:
         fp.write(img.data)
 
-    # Save one frame per second to the hard drive
-    filename = 'turtlebot_data/robot_{}.jpg'.format(int(time.time()))
+    # Save frame to the hard drive
+    VIDEO_DIR = 'data/recording'
+    timestamp = '{}.jpg'.format(int(time.time() * 1000))
+    filename = os.path.join(VIDEO_DIR, timestamp)
     with open(filename, 'w') as fp:
         fp.write(img.data)
 
-    convnet_output = run_model('static/kinect.jpg')
+    img = np.array(Image.open('static/kinect.jpg'))
 
-    face_detector = np.zeros((32*16, 16*14))
-    for i in range(0, 32):
-        #print "Face detector shape is {}".format(face_detector.shape)
-        outputs = convnet_output['conv5_1'][0]
-        #print "outputs shape {}".format(outputs.shape)
-        row = np.concatenate(outputs[i*16:(i+1)*16], axis=1)
-        #print "row shape is {}".format(row.shape)
-        face_detector[i*14:(i+1)*14, :] = row
-
-    #print "img_data shape is {}".format(img_data.shape)
-    #print "face_detector shape is {}".format(face_detector.shape)
-
-    img_data = jpg_to_numpy(img.data)
-    x = img_data.shape
-    y = face_detector.shape
-    height = max(x[0], y[0])
-    width = x[1] + y[1]
-    visual = np.zeros((height, width))
-    visual[:x[0], :x[1]] = img_data.mean(axis=2)
-    visual[:y[0], x[1]:] = face_detector
+    command = open('static/question.txt').read()
+    model_output = run_model('static/kinect.jpg', command)
+    height, width = model_output.shape
 
     from scipy.misc import imresize
-    face_neuron = convnet_output['conv5_1'][0][16*6 + 8]
-    face_display = imresize(face_neuron, 8.0, interp='bicubic')
+    visual = imresize(img, (480, 640))
 
-    visual[:face_display.shape[0], :face_display.shape[1]] = face_display
-    save_image(visual, 'static/visualize.jpg', format='JPEG')
+    # Output final layer activations as the red channel
+    visual[:,:,0] = imresize(model_output, (480, 640))
 
-    handle_movement(face_neuron, face_display)
-    #print "Processed frame in {:.2f}s".format(time.time() - start_time)
+    save_image(visual, 'static/visual.jpg', format='JPEG')
+
+    draw_text(img, "Command: {}".format(command))
+
+    MOVEMENT_DELAY = .1
+    if last_move_time + MOVEMENT_DELAY < time.time():
+        handle_movement(model_output)
+        last_move_time = time.time()
+    print "Processed frame in {:.2f}s".format(time.time() - start_time)
+
+    if '--visual' in sys.argv:
+        # Draw image
+        os.system('./imgcat static/visual.jpg')
 
 
-def handle_movement(face_neuron, face_display):
-    # Move the Turtlebot left or right to look at the face
-    face_x, face_y = face_position(face_display)
-    face_detected = face_neuron.max() > 0
+def handle_movement(model_output):
+    # Move the Turtlebot left or right to look at the brightest pixel
+    face_x, face_y = face_position(model_output)
+    face_detected = model_output.max() > .5
     twist = Twist()
     if face_detected:
-        if face_x < -3:
-            print "move left"
+        if abs(face_x) > 5:
+            print "move by {}".format(face_x)
             twist.linear.x = 0.0
-            twist.angular.z = 1.0
-            twist.linear.y = 0.0
-        elif face_x > 3:
-            print("move right")
-            twist.linear.x = 0.0
-            twist.angular.z = -1.0
+            twist.angular.z = -.02 * face_x
             twist.linear.y = 0.0
         else:
             print("move forward")
             twist.linear.x = 0.0
             twist.angular.z = 0.0
             twist.linear.y = 0.0
-        #pubby.publish(twist)
+        pubby.publish(twist)
+    else:
+        print("I don't see anything interesting")
 
 
 def face_position(convnet_map, fov_width_deg=62.0, fov_height_deg=48.6):

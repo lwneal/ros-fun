@@ -91,6 +91,10 @@ def build_model(wordvec_dim, sequence_length):
     model.add(ZeroPadding2D((2, 2)))
     model.add(Convolution2D(64, 5, 5, activation='relu', name="fusion_conv3"))
 
+    # Another another layer for more more logic
+    model.add(ZeroPadding2D((2, 2)))
+    model.add(Convolution2D(64, 5, 5, activation='relu', name="fusion_conv4"))
+
     # Final layer
     model.add(Convolution2D(1, 1, 1, activation='sigmoid', name="output"))
 
