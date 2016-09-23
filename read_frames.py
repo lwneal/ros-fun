@@ -32,10 +32,12 @@ def draw_text(image_array, text):
     from PIL import Image
     from PIL import ImageFont
     from PIL import ImageDraw
+    image_array = image_array.astype(np.uint8)
     img = Image.fromarray(image_array).convert('RGB')
     draw = ImageDraw.Draw(img)
     font = ImageFont.truetype("sans-serif.ttf", 16)
-    draw.rectangle((0, 0, img.width, 16), fill=(0,0,0,128))
+    #draw.rectangle((0, 0, img.width, 16), fill=(0,0,0,128))
+    draw.rectangle((0, 0, img.width, 16), fill=(0,0,0,0))
     draw.text((0, 0), text, (255,255,255), font=font)
     return np.array(img)
 
@@ -56,13 +58,6 @@ def image_callback(img):
     with open('static/kinect.jpg', 'w') as fp:
         fp.write(img.data)
 
-    # Save frame to the hard drive
-    VIDEO_DIR = 'data/recording'
-    timestamp = '{}.jpg'.format(int(time.time() * 1000))
-    filename = os.path.join(VIDEO_DIR, timestamp)
-    with open(filename, 'w') as fp:
-        fp.write(img.data)
-
     img = np.array(Image.open('static/kinect.jpg'))
 
     command = open('static/question.txt').read()
@@ -70,19 +65,37 @@ def image_callback(img):
     height, width = model_output.shape
 
     from scipy.misc import imresize
-    visual = imresize(img, (480, 640))
+    visual = 0.5 * imresize(img, (480, 640))
 
     # Output final layer activations as the red channel
-    visual[:,:,0] = imresize(model_output, (480, 640))
+    overlay = imresize(model_output, (480, 640), interp='nearest')
+
+    #np.where(visual[:,:,0] > .05) = np.clip(0, 255, overlay * 1000)
+    visual[:,:,0] = (visual[:,:,0] + overlay).clip(0,255)
+
+
+    # Output a minimap overlay of the model output
+    visual[380:, 540:, 0] = imresize(model_output, (100,100))
+    visual[380:, 540:, 1] = imresize(model_output, (100,100))
+    visual[380:, 540:, 2] = imresize(model_output, (100,100))
+
+
+    MOVEMENT_DELAY = .01
+    if last_move_time + MOVEMENT_DELAY < time.time():
+        azumith, altitude, certainty = handle_movement(model_output)
+        last_move_time = time.time()
+
+    visual = draw_text(visual, "Command: '{}'\nDetected target with certainty {:.2f} at azumith {:.2f} deg".format(
+        command, certainty, azumith))
 
     save_image(visual, 'static/visual.jpg', format='JPEG')
 
-    draw_text(img, "Command: {}".format(command))
+    # Save frame to the hard drive
+    VIDEO_DIR = 'data/recording'
+    timestamp = '{}.jpg'.format(int(time.time() * 1000))
+    filename = os.path.join(VIDEO_DIR, timestamp)
+    save_image(visual, filename)
 
-    MOVEMENT_DELAY = .1
-    if last_move_time + MOVEMENT_DELAY < time.time():
-        handle_movement(model_output)
-        last_move_time = time.time()
     print "Processed frame in {:.2f}s".format(time.time() - start_time)
 
     if '--visual' in sys.argv:
@@ -92,23 +105,17 @@ def image_callback(img):
 
 def handle_movement(model_output):
     # Move the Turtlebot left or right to look at the brightest pixel
-    face_x, face_y = face_position(model_output)
-    face_detected = model_output.max() > .5
+    azumith, altitude = face_position(model_output)
+    certainty = model_output.max()
+    print("Target detected with certainty {:.2f} at azumith {:.2f}".format(certainty, azumith))
+
     twist = Twist()
-    if face_detected:
-        if abs(face_x) > 5:
-            print "move by {}".format(face_x)
-            twist.linear.x = 0.0
-            twist.angular.z = -.02 * face_x
-            twist.linear.y = 0.0
-        else:
-            print("move forward")
-            twist.linear.x = 0.0
-            twist.angular.z = 0.0
-            twist.linear.y = 0.0
+    SPEED = .01
+    if certainty > .01:
+        #twist.linear.x = max(0, .1 - .01 * abs(azumith))
+        twist.angular.z = -SPEED * azumith
         pubby.publish(twist)
-    else:
-        print("I don't see anything interesting")
+    return azumith, altitude, certainty
 
 
 def face_position(convnet_map, fov_width_deg=62.0, fov_height_deg=48.6):
@@ -125,7 +132,12 @@ def face_position(convnet_map, fov_width_deg=62.0, fov_height_deg=48.6):
 
     def to_rel_degrees(position_idx, map_length, fov_degrees):
         return (position_idx * (1.0 / map_length) - 0.5) * fov_degrees
-    return to_rel_degrees(x_pos, map_width, fov_width_deg), to_rel_degrees(y_pos, map_height, fov_height_deg)
+
+    # Get the weighted average of columns
+    idxs = np.arange(0, map_width)
+    col_avg = np.average(idxs, weights=np.sum(convnet_map, axis=0))
+
+    return to_rel_degrees(col_avg, map_width, fov_width_deg), to_rel_degrees(y_pos, map_height, fov_height_deg)
 
 
 def save_image(img_data, filename, format="PNG"):
