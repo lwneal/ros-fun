@@ -20,7 +20,7 @@ import neural_network
 import word_vector
 from word_vector import vectorize, pad_to_length
 
-from neural_network import OUTPUT_SHAPE, BATCH_OUTPUT_SHAPE
+from neural_network import OUTPUT_SHAPE, BATCH_OUTPUT_SHAPE, load_weights
 
 MODEL_FILENAME = 'model.h5'
 INPUT_WORD_COUNT = 32
@@ -33,7 +33,7 @@ class Model(object):
         self.vgg_network = neural_network.build_vgg_model()
         self.neural_network = neural_network.build_model(wordvec_dim, INPUT_WORD_COUNT)
         if load_from_filename:
-            self.neural_network.load_weights(load_from_filename)
+            load_weights(self.neural_network, load_from_filename)
 
     def evaluate(self, img, question, verbose=False):
         if verbose:

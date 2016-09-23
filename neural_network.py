@@ -3,11 +3,11 @@ import numpy as np
 import random
 import h5py
 
-VGG_WEIGHTS_FILE = 'vgg16_weights.h5'
-IMG_INPUT_WIDTH = 324
-IMG_INPUT_HEIGHT = 324
-OUTPUT_SHAPE = (20, 20)
-BATCH_OUTPUT_SHAPE = (1, 1, 20, 20)
+VGG_WEIGHTS_FILE = 'vgg16_conv_weights.h5'
+OUTPUT_SHAPE = (24, 24)
+BATCH_OUTPUT_SHAPE = (1, 1, OUTPUT_SHAPE[0], OUTPUT_SHAPE[1])
+IMG_INPUT_HEIGHT = OUTPUT_SHAPE[0] * 16
+IMG_INPUT_WIDTH = OUTPUT_SHAPE[1] * 16
 
 
 def build_vgg_model():
@@ -18,7 +18,7 @@ def build_vgg_model():
     import h5py
 
     vgg_model = Sequential()
-    vgg_model.add(ZeroPadding2D((1,1), input_shape=(3, IMG_INPUT_WIDTH, IMG_INPUT_HEIGHT)))
+    vgg_model.add(ZeroPadding2D((1,1), input_shape=(3, IMG_INPUT_HEIGHT, IMG_INPUT_WIDTH)))
     vgg_model.add(Convolution2D(64, 3, 3, activation='relu', name='conv1_1'))
     vgg_model.add(ZeroPadding2D((1, 1)))
     vgg_model.add(Convolution2D(64, 3, 3, activation='relu', name='conv1_2'))
@@ -53,11 +53,10 @@ def build_vgg_model():
     vgg_model.add(ZeroPadding2D((1, 1)))
     vgg_model.add(Convolution2D(512, 3, 3, activation='relu', name='conv5_3'))
 
-    load_vgg16_conv_weights(vgg_model)
-    #vgg_model.compile(loss='categorical_crossentropy', optimizer='sgd')
+    load_weights(vgg_model, VGG_WEIGHTS_FILE)
 
     # Compress feature map down to a more manageable size
-    vgg_model.add(Convolution2D(32, 1, 1, activation='relu', name='conv6'))
+    vgg_model.add(Convolution2D(64, 1, 1, activation='relu', name='conv6'))
     return vgg_model
 
 
@@ -71,9 +70,10 @@ def build_model(wordvec_dim, sequence_length):
 
     language_model = Sequential()
     language_model.add(GRU(512, input_shape=(sequence_length, wordvec_dim), name="gru_1"))
+
     # Broadcast fixed-size language output to variable-size convnet
-    language_model.add(RepeatVector(20*20))
-    language_model.add(Reshape((512,20,20)))
+    language_model.add(RepeatVector(OUTPUT_SHAPE[0] * OUTPUT_SHAPE[1]))
+    language_model.add(Reshape((512, OUTPUT_SHAPE[0], OUTPUT_SHAPE[1])))
 
     model = Sequential()
     model.add(Merge([vgg_model, language_model], mode='concat', concat_axis=1))
@@ -81,19 +81,11 @@ def build_model(wordvec_dim, sequence_length):
     # Add another layer to combine vision and language
     # Note that the number of vision and language outputs are roughly balanced
     model.add(ZeroPadding2D((1, 1)))
-    model.add(Convolution2D(128, 3, 3, activation='relu', name="fusion_conv1"))
+    model.add(Convolution2D(256, 3, 3, activation='relu', name="fusion_conv1"))
 
     # Another layer for more logic
     model.add(ZeroPadding2D((2, 2)))
-    model.add(Convolution2D(64, 5, 5, activation='relu', name="fusion_conv2"))
-
-    # Another layer for more logic
-    model.add(ZeroPadding2D((2, 2)))
-    model.add(Convolution2D(64, 5, 5, activation='relu', name="fusion_conv3"))
-
-    # Another another layer for more more logic
-    model.add(ZeroPadding2D((2, 2)))
-    model.add(Convolution2D(64, 5, 5, activation='relu', name="fusion_conv4"))
+    model.add(Convolution2D(128, 5, 5, activation='relu', name="fusion_conv2"))
 
     # Final layer
     model.add(Convolution2D(1, 1, 1, activation='sigmoid', name="output"))
@@ -103,20 +95,42 @@ def build_model(wordvec_dim, sequence_length):
     return model
 
 
-def load_vgg16_conv_weights(model, weights_path=VGG_WEIGHTS_FILE):
-    # load the weights of the VGG16 networks
-    # (trained on ImageNet, won the ILSVRC competition in 2014)
-    # note: when there is a complete match between your model definition
-    # and your weight savefile, you can simply call model.load_weights(filename)
-    assert os.path.exists(weights_path), 'Model weights not found (see "weights_path" variable in script).'
-    f = h5py.File(weights_path)
-    for k in range(f.attrs['nb_layers']):
-        if k >= len(model.layers):
-            # we don't look at the last (fully-connected) layers in the savefile
-            break
-        g = f['layer_{}'.format(k)]
-        weights = [g['param_{}'.format(p)] for p in range(g.attrs['nb_params'])]
-        model.layers[k].set_weights(weights)
-    f.close()
-    print('Model loaded.')
+# Load weights from an HDF5 file into a Keras model
+# Requires that each layer in the model have a unique name
+def load_weights(model, filename):
+    import time
+    import h5py
+    start_time = time.time()
+    print("Loading weights from filename {} to model {}".format(filename, model))
+    f = h5py.File(filename)
 
+    # Collect nested layers (eg. layers inside a Merge)
+    model_matrices = {}
+    def collect_layers(item):
+        for layer in item.layers:
+            if hasattr(layer, 'layers'):
+                collect_layers(layer)
+            for mat in layer.weights:
+                if mat.name in model_matrices and model_matrices[mat.name] is not mat:
+                    print("Warning: Found more than one layer named {} in model {}".format(mat.name, model))
+                model_matrices[mat.name] = mat
+    collect_layers(model)
+
+    # Load matrices, discarding extra weights or padding with zeros as required
+    loaded_count = 0
+    for layer_name in f:
+        saved_layer = f[layer_name]
+        for mat_name in saved_layer:
+            saved_mat = saved_layer[mat_name]
+            if mat_name not in model_matrices:
+                print("Warning: Discarding unknown matrix {}".format(mat_name))
+                continue
+            mat_shape = model_matrices[mat_name].get_value().shape
+            if mat_shape != saved_mat.shape:
+                print("Layer {} resizing saved matrix {} to new shape {}".format(
+                    mat_name, mat_shape, saved_mat.shape))
+                saved_mat.value.resize(mat_shape)
+            model_matrices[mat_name].set_value(saved_mat.value)
+            loaded_count += 1
+    print("Loaded {} matrices in {:.2f}s".format(loaded_count, time.time() - start_time))
+    f.close()

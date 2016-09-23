@@ -68,7 +68,7 @@ def image_callback(img):
     visual = 0.5 * imresize(img, (480, 640))
 
     # Output final layer activations as the red channel
-    overlay = imresize(model_output, (480, 640), interp='nearest')
+    overlay = imresize(model_output, (480, 640), interp='nearest') * (1.0 / model_output.max())
 
     #np.where(visual[:,:,0] > .05) = np.clip(0, 255, overlay * 1000)
     visual[:,:,0] = (visual[:,:,0] + overlay).clip(0,255)
