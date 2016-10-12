@@ -17,6 +17,7 @@ import keras
 model = None
 pubby = None
 
+timestamp = 1
 
 def init_model():
     global model
@@ -51,6 +52,7 @@ def jpg_to_numpy(jpg_data):
 last_move_time = 0
 def image_callback(img):
     global last_move_time
+    global timestamp
     start_time = time.time()
 
     #img_data = jpg_to_numpy(img.data)
@@ -68,7 +70,10 @@ def image_callback(img):
     visual = 0.5 * imresize(img, (480, 640))
 
     # Output final layer activations as the red channel
-    overlay = imresize(model_output, (480, 640), interp='nearest') * (1.0 / model_output.max())
+    overlay = imresize(model_output, (480, 640), interp='nearest')
+
+    # De-normalize so we don't scale small probabilities up to red
+    overlay = (overlay.astype(np.float) * model_output.max()).astype(np.int)
 
     #np.where(visual[:,:,0] > .05) = np.clip(0, 255, overlay * 1000)
     visual[:,:,0] = (visual[:,:,0] + overlay).clip(0,255)
@@ -92,8 +97,9 @@ def image_callback(img):
 
     # Save frame to the hard drive
     VIDEO_DIR = 'data/recording'
-    timestamp = '{}.jpg'.format(int(time.time() * 1000))
-    filename = os.path.join(VIDEO_DIR, timestamp)
+    #timestamp = '{}.jpg'.format(int(time.time() * 1000))
+    timestamp += 1
+    filename = os.path.join(VIDEO_DIR, '{}.jpg'.format(timestamp))
     save_image(visual, filename)
 
     print "Processed frame in {:.2f}s".format(time.time() - start_time)
@@ -110,7 +116,7 @@ def handle_movement(model_output):
     print("Target detected with certainty {:.2f} at azumith {:.2f}".format(certainty, azumith))
 
     twist = Twist()
-    SPEED = .01
+    SPEED = .02
     if certainty > .01:
         #twist.linear.x = max(0, .1 - .01 * abs(azumith))
         twist.angular.z = -SPEED * azumith
