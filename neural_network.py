@@ -56,7 +56,7 @@ def build_vgg_model():
     load_weights(vgg_model, VGG_WEIGHTS_FILE)
 
     # Compress feature map down to a more manageable size
-    vgg_model.add(Convolution2D(64, 1, 1, activation='relu', name='conv6'))
+    vgg_model.add(Convolution2D(128, 1, 1, activation='relu', name='conv6'))
     return vgg_model
 
 
@@ -82,13 +82,21 @@ def build_model(wordvec_dim, sequence_length):
     # Note that the number of vision and language outputs are roughly balanced
     model.add(ZeroPadding2D((1, 1)))
     model.add(Convolution2D(256, 3, 3, activation='relu', name="fusion_conv1"))
+    model.add(Dropout(0.2))
 
     # Another layer for more logic
     model.add(ZeroPadding2D((2, 2)))
     model.add(Convolution2D(128, 5, 5, activation='relu', name="fusion_conv2"))
+    model.add(Dropout(0.2))
+
+    # more layers
+    model.add(ZeroPadding2D((2, 2)))
+    model.add(Convolution2D(128, 5, 5, activation='relu', name="fusion_conv3"))
+    model.add(Dropout(0.2))
 
     # Final layer
     model.add(Convolution2D(1, 1, 1, activation='sigmoid', name="output"))
+
 
     from keras.optimizers import RMSprop, Adam
     model.compile(loss='mse', optimizer=RMSprop(lr=.00002))

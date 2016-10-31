@@ -9,6 +9,7 @@ import roslib
 import std_msgs.msg
 import sensor_msgs.msg
 from geometry_msgs.msg import Twist
+from pr2_controllers_msgs.msg import PointHeadActionGoal
 from model import Model
 
 import keras
@@ -60,7 +61,8 @@ def image_callback(img):
     with open('static/kinect.jpg', 'w') as fp:
         fp.write(img.data)
 
-    img = np.array(Image.open('static/kinect.jpg'))
+    img = np.array(Image.open('static/kinect.jpg').convert('RGB'))
+    print "Got image size: {}".format(img.shape)
 
     command = open('static/question.txt').read()
     model_output = run_model('static/kinect.jpg', command)
@@ -115,12 +117,14 @@ def handle_movement(model_output):
     certainty = model_output.max()
     print("Target detected with certainty {:.2f} at azumith {:.2f}".format(certainty, azumith))
 
-    twist = Twist()
+    move_head = PointHeadActionGoal()
+    
     SPEED = .02
     if certainty > .01:
-        #twist.linear.x = max(0, .1 - .01 * abs(azumith))
-        twist.angular.z = -SPEED * azumith
-        pubby.publish(twist)
+        move_head.goal.target.point.x = .01 * azumith
+        move_head.goal.target.point.y = .01 * azumith
+        move_head.goal.target.point.z = .01 * azumith
+        pubby.publish(move_head)
     return azumith, altitude, certainty
 
 
@@ -156,11 +160,12 @@ def save_image(img_data, filename, format="PNG"):
 def main():
     init_model()
     rospy.init_node('kinect_image_grabber')
-    subby = rospy.Subscriber('/camera/rgb/image_color/compressed', sensor_msgs.msg.CompressedImage, image_callback, queue_size=1)
+    camera = '/r_forearm_cam/image_color/compressed'
+    subby = rospy.Subscriber(camera, sensor_msgs.msg.CompressedImage, image_callback, queue_size=1)
     #subby2 = rospy.Subscriber('/cur_tilt_angle', std_msgs.msg.Float64, position_callback)
     global pubby
-    TURTLEBOT_MOVE_TOPIC = '/mobile_base/commands/velocity'
-    pubby = rospy.Publisher(TURTLEBOT_MOVE_TOPIC, Twist, queue_size=1)
+    MOVE_TOPIC = '/head_traj_controller/point_head_action/goal'
+    pubby = rospy.Publisher(MOVE_TOPIC, PointHeadActionGoal, queue_size=1)
     print("Entering ROS spin event loop")
     rospy.spin()
 
