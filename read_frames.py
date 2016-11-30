@@ -1,3 +1,13 @@
+import roslib
+#roslib.load_manifest('pr2_position_scripts')
+
+import rospy
+import actionlib
+from actionlib_msgs.msg import *
+from pr2_controllers_msgs.msg import *
+from geometry_msgs.msg import *
+
+import random
 import sys
 import os
 import time
@@ -9,16 +19,31 @@ import roslib
 import std_msgs.msg
 import sensor_msgs.msg
 from geometry_msgs.msg import Twist
-from pr2_controllers_msgs.msg import PointHeadActionGoal
+from pr2_controllers_msgs.msg import *
+from pr2_controllers_msgs.msg import JointTrajectoryControllerState
+
+import joint_states
 from model import Model
 
 import keras
 
 
+g = PointHeadGoal()
+g.target.point.x = 1.0
+g.target.point.z = .0
+g.target.point.y = .0
+g.max_velocity = 0.1
+#g.min_duration = rospy.Duration(1.0)
+#g.target.header.frame_id = 'base_link'
+g.target.header.frame_id = 'wide_stereo_l_stereo_camera_frame'
+
 model = None
 pubby = None
+head_client = None
 
 timestamp = 1
+
+joint_states.init()
 
 def init_model():
     global model
@@ -49,7 +74,6 @@ def jpg_to_numpy(jpg_data):
         fp.write(jpg_data)
     return np.array(Image.open('/tmp/robot.jpg'))
 
-
 last_move_time = 0
 def image_callback(img):
     global last_move_time
@@ -62,7 +86,7 @@ def image_callback(img):
         fp.write(img.data)
 
     img = np.array(Image.open('static/kinect.jpg').convert('RGB'))
-    print "Got image size: {}".format(img.shape)
+    #print "Got image size: {}".format(img.shape)
 
     command = open('static/question.txt').read()
     model_output = run_model('static/kinect.jpg', command)
@@ -92,8 +116,8 @@ def image_callback(img):
         azumith, altitude, certainty = handle_movement(model_output)
         last_move_time = time.time()
 
-    visual = draw_text(visual, "Command: '{}'\nDetected target with certainty {:.2f} at azumith {:.2f} deg".format(
-        command, certainty, azumith))
+    visual = draw_text(visual, "Command: '{}'\nDetected target with certainty {:.2f} at azumith {:.2f} deg altitude {:.2f}".format(
+        command, certainty, azumith, altitude))
 
     save_image(visual, 'static/visual.jpg', format='JPEG')
 
@@ -104,7 +128,7 @@ def image_callback(img):
     filename = os.path.join(VIDEO_DIR, '{}.jpg'.format(timestamp))
     save_image(visual, filename)
 
-    print "Processed frame in {:.2f}s".format(time.time() - start_time)
+    #print "Processed frame in {:.2f}s".format(time.time() - start_time)
 
     if '--visual' in sys.argv:
         # Draw image
@@ -112,19 +136,20 @@ def image_callback(img):
 
 
 def handle_movement(model_output):
+    global g
     # Move the Turtlebot left or right to look at the brightest pixel
     azumith, altitude = face_position(model_output)
     certainty = model_output.max()
     print("Target detected with certainty {:.2f} at azumith {:.2f}".format(certainty, azumith))
 
-    move_head = PointHeadActionGoal()
-    
     SPEED = .02
     if certainty > .01:
-        move_head.goal.target.point.x = .01 * azumith
-        move_head.goal.target.point.y = .01 * azumith
-        move_head.goal.target.point.z = .01 * azumith
-        pubby.publish(move_head)
+        g.target.point.x = 1.0
+        g.target.point.z = -SPEED * altitude
+        g.target.point.y = -SPEED * azumith
+        head_client.send_goal(g)
+        print("Current pos {} {}".format(joint_states.pan, joint_states.tilt))
+
     return azumith, altitude, certainty
 
 
@@ -158,14 +183,17 @@ def save_image(img_data, filename, format="PNG"):
 
 
 def main():
+    global head_client
     init_model()
-    rospy.init_node('kinect_image_grabber')
-    camera = '/r_forearm_cam/image_color/compressed'
+    rospy.init_node('remote_gpu_control')
+    camera = '/wide_stereo/left/image_color/compressed'
     subby = rospy.Subscriber(camera, sensor_msgs.msg.CompressedImage, image_callback, queue_size=1)
-    #subby2 = rospy.Subscriber('/cur_tilt_angle', std_msgs.msg.Float64, position_callback)
+    head_client = actionlib.SimpleActionClient('/head_traj_controller/point_head_action', PointHeadAction)
+    head_client.send_goal(g)
+    head_client.wait_for_server()
     global pubby
-    MOVE_TOPIC = '/head_traj_controller/point_head_action/goal'
-    pubby = rospy.Publisher(MOVE_TOPIC, PointHeadActionGoal, queue_size=1)
+    MOVE_TOPIC = '/head_traj_controller/point_head_action'
+    pubby = rospy.Publisher(MOVE_TOPIC, PointHeadAction, queue_size=1)
     print("Entering ROS spin event loop")
     rospy.spin()
 
