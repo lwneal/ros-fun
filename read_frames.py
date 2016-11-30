@@ -6,6 +6,7 @@ import actionlib
 from actionlib_msgs.msg import *
 from pr2_controllers_msgs.msg import *
 from geometry_msgs.msg import *
+import message_filters
 
 import random
 import sys
@@ -34,11 +35,10 @@ g.target.point.z = .0
 g.target.point.y = .0
 g.max_velocity = 0.1
 #g.min_duration = rospy.Duration(1.0)
-#g.target.header.frame_id = 'base_link'
-g.target.header.frame_id = 'wide_stereo_l_stereo_camera_frame'
+g.target.header.frame_id = 'base_link'
+#g.target.header.frame_id = 'wide_stereo_l_stereo_camera_frame'
 
 model = None
-pubby = None
 head_client = None
 
 timestamp = 1
@@ -74,11 +74,25 @@ def jpg_to_numpy(jpg_data):
         fp.write(jpg_data)
     return np.array(Image.open('/tmp/robot.jpg'))
 
+def joints_callback(joints):
+    ts = joints.header.stamp.to_sec()
+    #print "Got callback for joint positions from {:.2f} seconds ago".format(time.time() -ts)
+
 last_move_time = 0
 def image_callback(img):
+    ts = img.header.stamp.to_sec()
+    #print "Got callback for image from {:.2f} seconds ago".format(time.time() - ts)
+
+def master_callback(joints, img):
+    joints_ts = joints.header.stamp.to_sec()
+    img_ts = img.header.stamp.to_sec()
+    print "Got MASTER callback with image {:.2f}s and joints {:.2f}s old".format(
+            time.time() - img_ts, time.time() - joints_ts)
     global last_move_time
     global timestamp
     start_time = time.time()
+
+    img_timestamp = img.header.stamp.to_sec()
 
     #img_data = jpg_to_numpy(img.data)
     #save_image(img_data, 'static/kinect.jpg', format="JPEG")
@@ -86,7 +100,7 @@ def image_callback(img):
         fp.write(img.data)
 
     img = np.array(Image.open('static/kinect.jpg').convert('RGB'))
-    #print "Got image size: {}".format(img.shape)
+    #print "Processing image from {:.3f} seconds ago".format(time.time() - img_timestamp)
 
     command = open('static/question.txt').read()
     model_output = run_model('static/kinect.jpg', command)
@@ -135,20 +149,23 @@ def image_callback(img):
         os.system('./imgcat static/visual.jpg')
 
 
+last_move_at = 0
 def handle_movement(model_output):
+    global last_move_at
     global g
     # Move the Turtlebot left or right to look at the brightest pixel
     azumith, altitude = face_position(model_output)
     certainty = model_output.max()
-    print("Target detected with certainty {:.2f} at azumith {:.2f}".format(certainty, azumith))
+    #print("Target detected with certainty {:.2f} at azumith {:.2f}".format(certainty, azumith))
 
-    SPEED = .02
-    if certainty > .01:
-        g.target.point.x = 1.0
-        g.target.point.z = -SPEED * altitude
+    SPEED = .01
+    if certainty > .01 and time.time() - last_move_at > 1.0:
+        g.target.point.x = 2.0
+        g.target.point.z = 1.5 - SPEED * altitude
         g.target.point.y = -SPEED * azumith
         head_client.send_goal(g)
         print("Current pos {} {}".format(joint_states.pan, joint_states.tilt))
+        last_move_at = time.time()
 
     return azumith, altitude, certainty
 
@@ -186,14 +203,28 @@ def main():
     global head_client
     init_model()
     rospy.init_node('remote_gpu_control')
-    camera = '/wide_stereo/left/image_color/compressed'
-    subby = rospy.Subscriber(camera, sensor_msgs.msg.CompressedImage, image_callback, queue_size=1)
+
+    # Take control of the head
     head_client = actionlib.SimpleActionClient('/head_traj_controller/point_head_action', PointHeadAction)
+    # Move the head to a default position
     head_client.send_goal(g)
     head_client.wait_for_server()
-    global pubby
-    MOVE_TOPIC = '/head_traj_controller/point_head_action'
-    pubby = rospy.Publisher(MOVE_TOPIC, PointHeadAction, queue_size=1)
+
+    # Subscribe to the video feed (JPG stream)
+    camera = '/wide_stereo/left/image_color/compressed'
+    #sub_img = rospy.Subscriber(camera, sensor_msgs.msg.CompressedImage, image_callback, queue_size=1)
+    sub_img = message_filters.Subscriber(camera, sensor_msgs.msg.CompressedImage)
+    sub_img.registerCallback(image_callback)
+
+    # Subscribe to the telemetry feed
+    joint_topic = '/joint_states'
+    #sub_joints = rospy.Subscriber(joint_topic, sensor_msgs.msg.JointState, joints_callback, queue_size=1)
+    sub_joints = message_filters.Subscriber(joint_topic, sensor_msgs.msg.JointState)
+    sub_joints.registerCallback(joints_callback)
+
+    sync = message_filters.ApproximateTimeSynchronizer([sub_joints, sub_img], 6, .5)
+    sync.registerCallback(master_callback)
+
     print("Entering ROS spin event loop")
     rospy.spin()
 

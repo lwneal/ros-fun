@@ -43,7 +43,6 @@ def get_dimensionality():
     init()
     return glove_dict[UNKNOWN_TOKEN].shape[0]
 
-
 def vectorize(text):
     init()
     text = preprocess(text)
