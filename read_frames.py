@@ -35,8 +35,8 @@ g.target.point.z = .0
 g.target.point.y = .0
 g.max_velocity = 0.1
 #g.min_duration = rospy.Duration(1.0)
-g.target.header.frame_id = 'base_link'
-#g.target.header.frame_id = 'wide_stereo_l_stereo_camera_frame'
+#g.target.header.frame_id = 'base_link'
+g.target.header.frame_id = 'wide_stereo_l_stereo_camera_frame'
 
 model = None
 head_client = None
@@ -158,11 +158,11 @@ def handle_movement(model_output):
     certainty = model_output.max()
     #print("Target detected with certainty {:.2f} at azumith {:.2f}".format(certainty, azumith))
 
-    SPEED = .01
+    SPEED = .1
     if certainty > .01 and time.time() - last_move_at > 1.0:
         g.target.point.x = 2.0
-        g.target.point.z = 1.5 - SPEED * altitude
-        g.target.point.y = -SPEED * azumith
+        g.target.point.z = - SPEED * altitude
+        g.target.point.y = - SPEED * azumith
         head_client.send_goal(g)
         print("Current pos {} {}".format(joint_states.pan, joint_states.tilt))
         last_move_at = time.time()
