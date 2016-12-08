@@ -53,7 +53,7 @@ def build_vgg_model():
     vgg_model.add(ZeroPadding2D((1, 1)))
     vgg_model.add(Convolution2D(512, 3, 3, activation='relu', name='conv5_3'))
 
-    load_weights(vgg_model, VGG_WEIGHTS_FILE)
+    #load_weights(vgg_model, VGG_WEIGHTS_FILE)
 
     # Compress feature map down to a more manageable size
     vgg_model.add(Convolution2D(128, 1, 1, activation='relu', name='conv6'))
@@ -100,7 +100,6 @@ def build_model(wordvec_dim, sequence_length):
 
     # Final layer
     model.add(Convolution2D(1, 1, 1, activation='sigmoid', name="output"))
-
 
     from keras.optimizers import RMSprop, Adam
     model.compile(loss='mse', optimizer=RMSprop(lr=.00002))
