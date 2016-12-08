@@ -76,6 +76,10 @@ def build_model(wordvec_dim, sequence_length):
     language_model.add(Reshape((512, OUTPUT_SHAPE[0], OUTPUT_SHAPE[1])))
 
     model = Sequential()
+    for layer in vgg_model.layers:
+        print("Layer {}: weights shape: {}".format(
+            layer, [w.shape for w in layer.get_weights()]))
+    vgg_model.add(Reshape((128, OUTPUT_SHAPE[0], OUTPUT_SHAPE[1])))
     model.add(Merge([vgg_model, language_model], mode='concat', concat_axis=1))
 
     # Add another layer to combine vision and language

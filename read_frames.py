@@ -23,7 +23,6 @@ from geometry_msgs.msg import Twist
 from pr2_controllers_msgs.msg import *
 from pr2_controllers_msgs.msg import JointTrajectoryControllerState
 
-import joint_states
 from model import Model
 
 import keras
@@ -43,7 +42,6 @@ head_client = None
 
 timestamp = 1
 
-joint_states.init()
 
 def init_model():
     global model
@@ -202,6 +200,7 @@ def save_image(img_data, filename, format="PNG"):
 def main():
     global head_client
     init_model()
+    print("Loaded model successfully")
     rospy.init_node('remote_gpu_control')
 
     # Take control of the head
