@@ -100,8 +100,9 @@ def build_model(wordvec_dim, sequence_length):
     from keras.optimizers import RMSprop, Adam
     model.compile(loss='mse', optimizer=RMSprop(lr=.00002))
 
-    for layer in model.layers:
-        print("Layer {}: weights shape: {}".format(layer, [w.shape for w in layer.get_weights()]))
+    for m in [vgg_model, language_model, model]:
+        for layer in m.layers:
+            print("Layer {}: weights shape: {}".format(layer, [w.shape for w in layer.get_weights()]))
     return model
 
 
