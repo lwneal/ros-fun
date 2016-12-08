@@ -22,7 +22,6 @@ from word_vector import vectorize, pad_to_length
 
 from neural_network import OUTPUT_SHAPE, BATCH_OUTPUT_SHAPE, load_weights
 
-MODEL_FILENAME = 'model.h5'
 INPUT_WORD_COUNT = 32
 
 
