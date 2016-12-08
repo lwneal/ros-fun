@@ -30,10 +30,9 @@ class Model(object):
     def __init__(self, load_from_filename=None, batch_size=16):
         self.batch_size = batch_size
         wordvec_dim = word_vector.get_dimensionality()
-        self.vgg_network = neural_network.build_vgg_model()
         self.neural_network = neural_network.build_model(wordvec_dim, INPUT_WORD_COUNT)
         if load_from_filename:
-            load_weights(self.neural_network, load_from_filename)
+            self.neural_network.load_weights(load_from_filename)
 
     def evaluate(self, img, question, verbose=False):
         if verbose:
