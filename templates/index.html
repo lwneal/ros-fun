@@ -1,0 +1,42 @@
+<html>
+<head>
+<style>
+body {
+    font-family: Sans-Serif;
+}
+</style>
+<script type="text/JavaScript">
+var url = "/visual.jpg";
+var interval_ms = 1000;
+var img;
+
+function init() {
+    var canvas = document.getElementById("image_view");
+    var ctx = canvas.getContext("2d");
+    img = new Image();
+    refresh();
+    img.onload = function() {
+        console.log('Reloaded image size ' + img.width + ',' + img.height);
+        canvas.setAttribute("width", img.width);
+        canvas.setAttribute("height", img.height);
+        ctx.drawImage(this, 0, 0);
+    }
+}
+function refresh() {
+    img.src = url + "?t=" + new Date().getTime();
+    setTimeout("refresh()", interval_ms);
+}
+</script>
+</head>
+<body onload="JavaScript:init();">
+    <h4>Robot Control</h4>
+    <h4>Current Command: <b>{{question}}</b></h4>
+    <canvas id="image_view"></canvas>
+    <br>
+    <form id="query_form" method="POST" action='question'>
+        Enter new command:<br>
+        <input type="text" name="question" value="enter a question"><br>
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>
