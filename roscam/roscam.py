@@ -4,7 +4,6 @@ import rospy
 import docopt
 import message_filters
 import theora_image_transport.msg
-from sensor_msgs.msg import CompressedImage
 
 import block_storage
 
@@ -20,7 +19,7 @@ def video_callback(msg):
 def main(topic):
     print("Subscribing to video topic {}".format(topic))
     rospy.init_node('roscam')
-    sub_img = message_filters.Subscriber(topic, CompressedImage)
+    sub_img = message_filters.Subscriber(topic, theora_image_transport.msg.Packet)
     sub_img.registerCallback(video_callback)
     print("Entering ROS spin event loop")
     rospy.spin()
