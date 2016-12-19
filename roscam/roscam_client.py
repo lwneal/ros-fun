@@ -19,6 +19,8 @@ timestamp_file = 'timestamps.txt'
 PORT = 1234
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+MAX_FPS = 8
+last_sent_at = 0
 
 def store(frame, timestamp):
     timestamp_str = '{:.03f}\n'.format(timestamp)
@@ -27,10 +29,14 @@ def store(frame, timestamp):
 
 
 def stream(data):
+    global last_sent_at
     packet_type = '\x42'
     encoded_len = struct.pack('!l', len(data))
+    if time.time() - last_sent_at < 1.0 / MAX_FPS:
+        return
     try:
         s.send(packet_type + encoded_len + data)
+        last_sent_at = time.time()
     except:
         print("flagrant system error, exiting now")
         rospy.signal_shutdown('socket dead')
