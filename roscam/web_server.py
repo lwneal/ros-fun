@@ -5,6 +5,8 @@ import flask
 import socket
 from base64 import b64encode
 
+from vision import computer_vision
+
 app = flask.Flask(__name__)
 
 @app.route('/')
@@ -38,8 +40,8 @@ def stream_it():
         sys.stderr.write("socket connected\n")
         while True:
             jpg_data = read_packet_from_socket(s)
-            sys.stderr.write("Got packet len {}\n".format(len(jpg_data)))
-            yield 'data:image/jpeg;base64,{}\n\n'.format(b64encode(jpg_data))
+            processed_jpg = computer_vision(jpg_data)
+            yield 'data:image/jpeg;base64,{}\n\n'.format(b64encode(processed_jpg))
     return flask.Response(generate(), mimetype='text/event-stream')
 
 if __name__ == '__main__':
