@@ -11,9 +11,11 @@ app = flask.Flask(__name__)
 def index():
     return app.send_static_file('index.html')
 
-@app.route('/visual.jpg')
-def visual():
-    return app.send_static_file('visual.jpg')
+
+@app.route('/<path:path>')
+def get_static(path):
+    return flask.send_from_directory('static', path)
+
 
 def read_packet_from_socket(sock):
     packet_type = ord(sock.recv(1))
