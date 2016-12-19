@@ -16,7 +16,7 @@ from sensor_msgs.msg import CompressedImage
 video_file = 'video.ogv'
 timestamp_file = 'timestamps.txt'
 
-SERVER_ADDR = ('192.168.1.150', 1234)
+PORT = 1234
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 
@@ -29,7 +29,11 @@ def store(frame, timestamp):
 def stream(data):
     packet_type = '\x42'
     encoded_len = struct.pack('!l', len(data))
-    s.send(packet_type + encoded_len + data)
+    try:
+        s.send(packet_type + encoded_len + data)
+    except:
+        print("flagrant system error, exiting now")
+        rospy.signal_shutdown('socket dead')
 
 
 def check():
@@ -47,9 +51,9 @@ def video_callback(msg):
     stream(frame_data)
 
 
-def main(topic):
+def main(topic, server_ip):
     print("Connecting to server")
-    s.connect(SERVER_ADDR)
+    s.connect((server_ip, PORT))
 
     print("Subscribing to video topic {}".format(topic))
     rospy.init_node('roscam')
@@ -60,8 +64,9 @@ def main(topic):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Usage: {} /camera/rgb/image_raw/compressed".format(sys.argv[0]))
+    if len(sys.argv) < 3:
+        print("Usage: {} /camera/rgb/image_raw/compressed 127.1.2.3".format(sys.argv[0]))
         exit()
-    print("ROS-connected client uploading to server at {}".format(SERVER_ADDR))
-    main(sys.argv[1])
+    server_ip = sys.argv[2]
+    print("ROS-connected client uploading to server at {}".format(server_ip))
+    main(sys.argv[1], sys.argv[2])
