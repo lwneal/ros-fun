@@ -25,14 +25,15 @@ WIDTH=224
 # 559 folding_chair
 # 624 library
 # 765 rocking_chair
-CLASS = 423
+# 285 Egyptian cat
+CLASS = 285
 
 full_image = image.load_img(img_path, target_size=(WIDTH*4, WIDTH*4))
 
 resnet_output = np.zeros((WIDTH*4, WIDTH*4), dtype=float)
 
 start_time = time.time()
-STEP = 8
+STEP = 16
 for dx in range(0, WIDTH*4 - WIDTH/2, STEP):
     for dy in range(0, WIDTH*4 - WIDTH/2, STEP):
         # View 25% of the image at a time
