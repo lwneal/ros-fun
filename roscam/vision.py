@@ -1,6 +1,7 @@
 from cStringIO import StringIO
 import numpy as np
 from PIL import Image
+from scipy.misc import imresize
 
 import neural_network
 
@@ -14,7 +15,15 @@ Output: A JPG image with labels and annotations
 def computer_vision(jpg_data):
     pixels = decode_jpg(jpg_data)
 
-    output = neural_network.run(pixels)
+    preds = neural_network.run(pixels)
+
+    # Display a few neurons
+    for idx in range(10):
+        display_neuron = imresize(preds[0][idx], (64, 64))
+        x0 = 64 * idx
+        pixels[:64, x0:x0+64] = 0
+        for c in range(3):
+            pixels[:64, x0:x0+64, c] = display_neuron
 
     return encode_jpg(pixels)
 
