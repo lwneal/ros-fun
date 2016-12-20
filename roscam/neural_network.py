@@ -28,5 +28,5 @@ def init():
 def run(pixels):
     x = pixels_to_input(pixels)
     preds = model.predict(x)
-    print preds.shape
+    print("Got predictions shape {} with min {} max {}".format(preds.shape, preds.min(), preds.max()))
     return preds
