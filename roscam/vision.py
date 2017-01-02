@@ -9,7 +9,7 @@ neural_network.init()
 
 """
 Entry point for computer vision.
-Input: A raw JPG image
+Input: A JPG image video frame
 Output: A JPG image with labels and annotations
 """
 def computer_vision(jpg_data):

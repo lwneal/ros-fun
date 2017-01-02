@@ -5,10 +5,11 @@ from resnet50 import ResNet50
 from keras.preprocessing import image
 from imagenet_utils import preprocess_input, decode_predictions
 
-if len(sys.argv) < 2:
-    print("Usage: {} image.jpg".format(sys.argv[0]))
+if len(sys.argv) < 3:
+    print("Usage: {} input.jpg output.jpg".format(sys.argv[0]))
     exit()
 img_path = sys.argv[1]
+output_path = sys.argv[2]
 
 start_time = time.time()
 print "loading resnet..."
@@ -53,4 +54,4 @@ for dx in range(0, WIDTH*4 - WIDTH/2, STEP):
 from PIL import Image
 resnet_output *= 255.0 / resnet_output.max()
 img = Image.fromarray(resnet_output).convert('RGB')
-img.save('output.jpg')
+img.save(output_path)
