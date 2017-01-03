@@ -6,6 +6,7 @@ from scipy.misc import imresize
 import neural_network
 
 neural_network.init()
+preds = neural_network.run(np.zeros((256, 256, 3)))
 
 """
 Entry point for computer vision.

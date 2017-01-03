@@ -29,14 +29,10 @@ def store(frame, timestamp):
 
 
 def stream(data):
-    global last_sent_at
     packet_type = '\x42'
     encoded_len = struct.pack('!l', len(data))
-    if time.time() - last_sent_at < 1.0 / MAX_FPS:
-        return
     try:
         s.send(packet_type + encoded_len + data)
-        last_sent_at = time.time()
     except:
         print("flagrant system error, exiting now")
         rospy.signal_shutdown('socket dead')
@@ -49,12 +45,18 @@ def check():
 
 
 def video_callback(msg):
+    global last_sent_at
     frame_data = msg.data
     timestamp = msg.header.stamp.to_sec()
     latency = time.time() - timestamp
-    print("Streaming video frame size {:8d} age {:.3f} seconds".format(len(frame_data), latency))
-    store(frame_data, timestamp)
-    stream(frame_data)
+
+    if time.time() - last_sent_at > 1.0 / MAX_FPS:
+        msg = "\rStreaming video frame size {:8d} age {:.3f} seconds[K".format(len(frame_data), latency)
+        sys.stdout.write(msg)
+        sys.stdout.flush()
+        store(frame_data, timestamp)
+        stream(frame_data)
+        last_sent_at = time.time()
 
 
 def main(topic, server_ip):
