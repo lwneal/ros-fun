@@ -1,0 +1,22 @@
+Instructions to run
+
+On the cloud server:
+
+    # This handles incoming video streams
+    python cloud_server.py
+
+    # This is a web server
+    python web_server.py
+
+    # This one takes 30 seconds or so to warm up
+    python vision_server.py
+
+On the robot:
+
+    # Start ROS
+    robot start
+    python roscam_client.py /camera/rgb/image_color/compressed 10.1.2.3
+
+Where `10.1.2.3` is the IP of the cloud server.
+
+Then navigate to http://10.1.2.3:8005 and you should see a video stream in your browser.
