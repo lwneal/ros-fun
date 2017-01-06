@@ -15,18 +15,9 @@ Output: A JPG image with labels and annotations
 """
 def computer_vision(jpg_data):
     pixels = decode_jpg(jpg_data)
-
     preds = neural_network.run(pixels)
-
-    # Display a few neurons
-    for idx in range(10):
-        display_neuron = imresize(preds[0][idx], (64, 64))
-        x0 = 64 * idx
-        pixels[:64, x0:x0+64] = 0
-        for c in range(3):
-            pixels[:64, x0:x0+64, c] = display_neuron
-
-    return encode_jpg(pixels)
+    preds.reshape((2048, -1))
+    return encode_jpg(preds)
 
 def decode_jpg(jpg_data):
     fp = StringIO(jpg_data)
@@ -34,7 +25,7 @@ def decode_jpg(jpg_data):
     return np.array(img)
 
 def encode_jpg(pixels):
-    pil_img = Image.fromarray(pixels)
+    pil_img = Image.fromarray(pixels.astype(np.uint8))
     fp = StringIO()
     pil_img.save(fp, format='JPEG')
     return fp.getvalue()

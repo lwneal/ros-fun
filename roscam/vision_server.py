@@ -1,8 +1,37 @@
+import time
 import sys
-import vision
 import struct
 import os
 import socket
+from cStringIO import StringIO
+import numpy as np
+from PIL import Image
+from scipy.misc import imresize
+
+import neural_network
+
+
+neural_network.init()
+preds = neural_network.run(np.zeros((256, 256, 3)))
+
+
+def resnet_jpg(jpg_data):
+    pixels = decode_jpg(jpg_data)
+    preds = neural_network.run(pixels)
+    return encode_jpg(preds.reshape((2048, -1)))
+
+
+def decode_jpg(jpg_data):
+    fp = StringIO(jpg_data)
+    img = Image.open(fp)
+    return np.array(img.convert('RGB'))
+
+
+def encode_jpg(pixels):
+    pil_img = Image.fromarray(pixels.astype(np.uint8))
+    fp = StringIO()
+    pil_img.save(fp, format='JPEG')
+    return fp.getvalue()
 
 
 def read_packet(conn):
@@ -27,12 +56,14 @@ def write_packet(conn, data):
 
 
 def handle_client(conn):
+    start_time = time.time()
     packet_type, jpg_image = read_packet(conn)
     print("running resnet")
-    new_image = vision.computer_vision(jpg_image)
+    new_image = resnet_jpg(jpg_image)
     print("write_packet")
     write_packet(conn, new_image)
     print("finished handle_client")
+    print("handle_client in {:.2f}".format(time.time() - start_time))
 
 if __name__ == '__main__':
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
