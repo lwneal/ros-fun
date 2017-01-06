@@ -36,12 +36,12 @@ def preprocess_input(x, dim_ordering='default'):
     return x
 
 def init():
-    print("Resnet warming up, this will take ~30 seconds...")
+    start_time = time.time()
+    print("Initializing ResNet, please wait...")
     pixels = np.zeros((480, 640, 3))
     x = pixels_to_input(pixels)
     preds = model.predict(x)
-    print preds
-    print("Resnet is ready!")
+    print("Resnet initialized in {:.2f} sec".format(time.time() - start_time))
     pass
 
 def run(pixels):

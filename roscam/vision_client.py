@@ -3,20 +3,21 @@ import socket
 import util
 
 
-ADDR = (('localhost', 1237))
-
-
-def resnet(jpg_data):
+def resnet(addr, jpg_data):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect(ADDR)
+    s.connect(addr)
     util.write_packet(s, jpg_data)
     response_type, response_data = util.read_packet(s)
     return response_data
 
 
 if __name__ == '__main__':
+    addr = ('127.0.0.1', 1237)
     if len(sys.argv) < 2:
-        print("Usage: {} input.jpg > output.jpg".format(sys.argv[0]))
+        print("Usage: {} input.jpg [server] > output.jpg".format(sys.argv[0]))
+        print("server: defaults to localhost")
         exit()
     jpg_data = open(sys.argv[1]).read()
-    sys.stdout.write(resnet(jpg_data))
+    if len(sys.argv) > 2:
+        addr = (sys.argv[2], 1237)
+    sys.stdout.write(resnet(addr, jpg_data))
