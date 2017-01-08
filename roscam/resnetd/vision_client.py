@@ -1,4 +1,6 @@
+import math
 import sys
+import struct
 import socket
 from StringIO import StringIO
 
@@ -11,19 +13,20 @@ import util
 DEFAULT_ADDR = ('127.0.0.1', 1237)
 
 def resnet(jpg_data, addr=DEFAULT_ADDR):
-    width, height = get_dimensions(jpg_data)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(addr)
     util.write_packet(s, jpg_data)
     response_type, response_data = util.read_packet(s)
-    return decode_resnet_jpg(response_data, width, height)
+    height = struct.unpack('!l', response_data[0:4])[0]
+    width = struct.unpack('!l', response_data[4:8])[0]
+    jpg_data = response_data[8:]
+    return decode_resnet_jpg(height, width, jpg_data)
 
 
-def decode_resnet_jpg(jpg_data, img_width, img_height):
+def decode_resnet_jpg(height, width, jpg_data):
     img = Image.open(StringIO(jpg_data))
     values = np.array(img)
-    new_height = img_height / 32
-    return values.reshape((new_height, -1, 2048))
+    return values.reshape((height, width, 2048))
 
 
 def get_dimensions(jpg_data):
