@@ -1,19 +1,20 @@
 import os
+import time
 import numpy as np
 import random
 import h5py
 
 from resnet50 import ResNet50
-import imagenet_utils
+from keras import backend as K
 
 model = ResNet50(weights='imagenet', include_top=False)
 
 def pixels_to_input(pixels):
     x = pixels.astype(np.float)
-    # Expected input shape: (batch_size x channels x height x width)
-    x = np.transpose(x, (2, 0, 1))
+    # Expected input shape: (batch_size x height x width x channels)
     x = np.expand_dims(x, axis=0)
-    x = imagenet_utils.preprocess_input(x)
+    print "shape is {}".format(x.shape)
+    x = preprocess_input(x)
     return x
 
 def preprocess_input(x, dim_ordering='default'):
@@ -41,6 +42,7 @@ def init():
     pixels = np.zeros((480, 640, 3))
     x = pixels_to_input(pixels)
     preds = model.predict(x)
+    print('preds: {}'.format(preds))
     print("Resnet initialized in {:.2f} sec".format(time.time() - start_time))
     pass
 

@@ -12,7 +12,6 @@ import neural_network
 
 
 neural_network.init()
-preds = neural_network.run(np.zeros((256, 256, 3)))
 
 
 def resnet_jpg(jpg_data):
