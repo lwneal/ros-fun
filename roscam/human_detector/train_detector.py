@@ -13,7 +13,7 @@ import dataset_coco
 def load_model(filename=None):
     if filename:
         from keras.models import load_model
-        return load_model('model.h5')
+        return load_model(filename)
 
     from keras.models import Sequential
     from keras.layers import Convolution2D, ZeroPadding2D
