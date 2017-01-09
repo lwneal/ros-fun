@@ -1,15 +1,20 @@
+import os
 import sys
 import math
 
 import numpy as np
 from PIL import Image
 
-sys.path.append('../resnetd')
+sys.path.append(os.path.join(os.path.dirname(__file__), '../resnetd'))
 from vision_client import resnet
 import dataset_coco
 
 
-def load_model():
+def load_model(filename=None):
+    if filename:
+        from keras.models import load_model
+        return load_model('model.h5')
+
     from keras.models import Sequential
     from keras.layers import Convolution2D, ZeroPadding2D
     model = Sequential()
@@ -95,25 +100,15 @@ def train(model, batch_count=100):
 
 
 if __name__ == '__main__':
-    input_filename = sys.argv[1]
-    output_filename = sys.argv[2]
-    jpg_data = open(input_filename).read()
-
-    if len(sys.argv) > 3:
-        from keras.models import load_model
-        model = load_model('model.h5')
-    else:
-        model = load_model()
+    output_filename = sys.argv[1]
+    input_filename = None
+    if len(sys.argv) > 2:
+        input_filename = sys.argv[2]
+    model = load_model(filename=input_filename)
 
     try:
         train(model)
     except KeyboardInterrupt:
         print("Stopping due to keyboard interrupt")
 
-    model.save('model.h5')
-
-    print("Running on test image")
-    visual_activations = resnet(jpg_data)
-    mask = human_detector(model, visual_activations)
-    save_as_jpg(mask, output_filename)
-    print("Saved output to {}".format(output_filename))
+    model.save(output_filename)
