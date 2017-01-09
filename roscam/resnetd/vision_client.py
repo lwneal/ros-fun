@@ -1,3 +1,4 @@
+import pickle
 import math
 import sys
 import struct
@@ -17,16 +18,19 @@ def resnet(jpg_data, addr=DEFAULT_ADDR):
     s.connect(addr)
     util.write_packet(s, jpg_data)
     response_type, response_data = util.read_packet(s)
-    height = struct.unpack('!l', response_data[0:4])[0]
-    width = struct.unpack('!l', response_data[4:8])[0]
-    jpg_data = response_data[8:]
-    return decode_resnet_jpg(height, width, jpg_data)
+    preds = pickle.loads(response_data)
+    return preds
 
 
 def decode_resnet_jpg(height, width, jpg_data):
     img = Image.open(StringIO(jpg_data))
     values = np.array(img)
-    return values.reshape((height, width, 2048))
+    preds = values.reshape((width, height, 2048))
+    preds = np.transpose(preds, (1, 0, 2))
+    print
+    print preds.shape
+    print preds[:,:,42]
+    return preds
 
 
 def get_dimensions(jpg_data):

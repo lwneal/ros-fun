@@ -15,6 +15,8 @@ def load_model():
     model = Sequential()
     input_shape = (None, None, 2048)
     model.add(ZeroPadding2D((1, 1), input_shape=input_shape))
+    model.add(Convolution2D(64, 3, 3, activation='sigmoid', name='conv1'))
+    model.add(ZeroPadding2D((1, 1), input_shape=input_shape))
     model.add(Convolution2D(1, 3, 3, activation='sigmoid', name='output'))
     model.compile(optimizer='sgd', loss='mse', learning_rate=1.0)
     return model
@@ -22,9 +24,11 @@ def load_model():
 
 def human_detector(model, visual_activations):
     # Input: batch_size x height x width x 2048
-    visual_activations = np.expand_dims(visual_activations, axis=0)
+    if len(visual_activations.shape) == 3:
+        visual_activations = np.expand_dims(visual_activations, axis=0)
     preds = model.predict(visual_activations)
     # Output: height x width
+    print preds.shape
     return preds.reshape(preds.shape[1:-1])
 
 
@@ -48,29 +52,65 @@ def rescale(image, shape):
     return imresize(image, shape).astype(float) / 255.0
 
 
-def train(model):
-    for _ in range(100):
-        meta, pixels = dataset_coco.random_image()
-        jpg_data = open(meta['filename']).read()
-        mask = dataset_coco.human_detection_mask(meta)
+def get_example():
+    meta, pixels = dataset_coco.random_image()
+    jpg_data = open(meta['filename']).read()
+    mask = dataset_coco.human_detection_mask(meta)
 
-        x = resnet(jpg_data)
-        print("Resnet input shape {} {} output shape {} {}".format(
-            meta['height'], meta['width'], x.shape[1], x.shape[2]))
-        height, width, channels = x.shape
-        y = rescale(mask, x.shape)
+    x = resnet(jpg_data)
+    y = rescale(mask, x.shape)
 
-        x = np.expand_dims(x, axis=0)
-        y = np.expand_dims(y, axis=2)
-        y = np.expand_dims(y, axis=0)
-        model.fit(x, y, batch_size=1)
+    # Fill all images into a max-sized 32x32 activation mask
+    x_i = np.zeros((32, 32, 2048))
+    x_i[:x.shape[0], :x.shape[1]] = x
+
+    y_i = np.zeros((32, 32, 1))
+    y_i[:y.shape[0], :y.shape[1], 0] = y
+    return x_i, y_i
+
+
+def get_batch(batch_size=32):
+    X = []
+    Y = []
+    for _ in range(batch_size):
+        x_i, y_i = get_example()
+        X.append(x_i)
+        Y.append(y_i)
+    X = np.array(X)
+    Y = np.array(Y)
+    return X, Y
+
+
+def train(model, batch_count=100):
+    def generator():
+        try:
+            while True:
+                yield get_batch()
+        except Exception as e:
+            print("Exception: {}".format(e))
+            pass
+    print("Training start: weights avg: {}".format(model.get_weights()[0].mean()))
+    model.fit_generator(generator(), samples_per_epoch=32 * 4, nb_epoch=batch_count)
+    print("Training end: weights mean {}".format(model.get_weights()[0].mean()))
+
 
 if __name__ == '__main__':
     input_filename = sys.argv[1]
     output_filename = sys.argv[2]
     jpg_data = open(input_filename).read()
-    model = load_model()
-    train(model)
+
+    if len(sys.argv) > 3:
+        from keras.models import load_model
+        model = load_model('model.h5')
+    else:
+        model = load_model()
+
+    try:
+        train(model)
+    except KeyboardInterrupt:
+        print("Stopping due to keyboard interrupt")
+
+    model.save('model.h5')
 
     print("Running on test image")
     visual_activations = resnet(jpg_data)
