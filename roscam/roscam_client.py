@@ -19,7 +19,7 @@ timestamp_file = 'timestamps.txt'
 PORT = 1234
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-MAX_FPS = 4
+MAX_FPS = 8
 last_sent_at = 0
 
 def store(frame, timestamp):
