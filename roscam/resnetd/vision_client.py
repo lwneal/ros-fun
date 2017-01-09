@@ -22,17 +22,6 @@ def resnet(jpg_data, addr=DEFAULT_ADDR):
     return preds
 
 
-def decode_resnet_jpg(height, width, jpg_data):
-    img = Image.open(StringIO(jpg_data))
-    values = np.array(img)
-    preds = values.reshape((width, height, 2048))
-    preds = np.transpose(preds, (1, 0, 2))
-    print
-    print preds.shape
-    print preds[:,:,42]
-    return preds
-
-
 def get_dimensions(jpg_data):
     img = Image.open(StringIO(jpg_data))
     return img.size

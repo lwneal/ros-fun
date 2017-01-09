@@ -52,7 +52,7 @@ def handle_client(conn):
 
     data = pickle.dumps(preds)
     write_packet(conn, data)
-    compressed = data.encode('gzip').encode('gzip')
+    compressed = data.encode('zlib')
     print("Wrote pickle packet length {} in {:.3f}s (compressed length {})".format(len(data), time.time() - start_time, len(compressed)))
     #print("Produced JPG length {:10d} in {:.3f}s".format(len(output_img), time.time() - start_time))
 

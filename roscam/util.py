@@ -1,4 +1,7 @@
 import struct
+from PIL import Image
+import numpy as np
+from StringIO import StringIO
 
 
 def read_packet(conn):
@@ -17,3 +20,14 @@ def write_packet(conn, data):
     packet_type = '\x42'
     encoded_len = struct.pack('!l', len(data))
     conn.send(packet_type + encoded_len + data)
+
+
+def encode_jpg(pixels):
+    img = Image.fromarray(pixels).convert('RGB')
+    fp = StringIO()
+    img.save(fp, format='JPEG')
+    return fp.getvalue()
+
+
+def decode_jpg(jpg):
+    return np.array(Image.open(StringIO(jpg)))

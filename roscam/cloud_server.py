@@ -7,11 +7,30 @@ import sys
 import os
 import util
 
+from PIL import Image
+import numpy as np
+
+import human_detector
+human_detector.init('human_detector/model.h5')
+
+
+def build_visual_output(pixels, preds):
+    print 'got pixels shape {} preds shape {}'.format(pixels.shape, preds.shape)
+    shape = (pixels.shape[1], pixels.shape[0])
+    mask = np.array(Image.fromarray(preds * 255).resize(shape)).astype(np.uint8)
+
+    # Red overlay: output of network
+    pixels[:,:,0] = mask
+    return util.encode_jpg(pixels)
+    
+
 def handle_robot(robot_sock, subscriber_sock):
     while True:
-        packet_type, jpg_data = util.read_packet(robot_sock)
-        output_img = call_vision_server(jpg_data)
-        util.write_packet(subscriber_sock, output_img)
+        packet_type, frame_jpg = util.read_packet(robot_sock)
+        preds = human_detector.detect_human(frame_jpg)
+        annotated_jpg = build_visual_output(util.decode_jpg(frame_jpg), preds)
+        util.write_packet(subscriber_sock, annotated_jpg)
+
 
 def call_vision_server(jpg_data):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -42,16 +61,9 @@ while True:
         sys.stderr.write("Recv connection from {} {}\n".format(conn, addr))
         return conn
 
-    from threading import Thread
-    from multiprocessing.pool import ThreadPool
-    pool = ThreadPool(processes=2)
-
     conn = connect(s)
     conn2 = connect(t)
 
-    if os.fork():
-        print("Forked client to handle sockets {}, {}".format(conn, conn2))
-    else:
-        handle_robot(conn, conn2)
+    handle_robot(conn, conn2)
 
 sys.stderr.write("Connection closed\n")
