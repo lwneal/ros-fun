@@ -30,11 +30,36 @@ def get_sessions():
     for f in files:
         filename = os.path.join(BLOCK_STORAGE_DIR, f)
         lines = open(filename).readlines()
-        if not lines:
+        if len(lines) < 2:
+            print("Skipping degenerate session {}".format(f))
             continue
+        start_time = float(lines[0].split(',')[-1])
+        end_time = float(lines[-1].split(',')[-1])
         sessions.append({
+            'id': f.rstrip('.timestamps'),
+            'duration': end_time - start_time,
             'start_time': float(lines[0].split(',')[-1]),
             'end_time': float(lines[-1].split(',')[-1]),
-            'frames': len(lines),
+            'frame_count': len(lines),
         })
     return sessions
+
+
+def read_frames(session_id):
+    # Generator; yields jpg frames read one by one from a mjpeg file
+    timestamps_filename = os.path.join(BLOCK_STORAGE_DIR, '{}.timestamps'.format(session_id))
+    lines = open(timestamps_filename).read().splitlines()
+    video_filename = os.path.join(BLOCK_STORAGE_DIR, '{}.mjpeg'.format(session_id))
+    video_fp = open(video_filename)
+    for line, next_line in zip(lines, lines[1:]):
+        pos, timestamp = parse_timestamp_line(line)
+        next_pos, next_timestamp = parse_timestamp_line(next_line)
+        frame_data = video_fp.read(next_pos - pos)
+        yield timestamp, frame_data
+    # last frame
+    yield next_timestamp, video_fp.read()
+
+
+def parse_timestamp_line(line):
+    length, timestamp = line.split(',')
+    return int(length), float(timestamp)
