@@ -1,6 +1,7 @@
 """
 Listens on port 1234 for a connection from roscam_client.py, then accepts frames
 """
+import time
 import socket
 import struct
 import sys
@@ -11,6 +12,8 @@ from PIL import Image
 import numpy as np
 
 import human_detector
+import block_storage
+
 human_detector.init('human_detector/model.h5')
 
 
@@ -22,11 +25,13 @@ def build_visual_output(pixels, preds):
     # Red overlay: output of network
     pixels[:,:,0] = mask
     return util.encode_jpg(pixels)
-    
+
 
 def handle_robot(robot_sock, subscriber_sock):
+    bs = block_storage.BlockStorageContext()
     while True:
         packet_type, frame_jpg = util.read_packet(robot_sock)
+        bs.store(frame_jpg, time.time())  # TODO: propagate timestamps from ROS using capnp
         preds = human_detector.detect_human(frame_jpg)
         annotated_jpg = build_visual_output(util.decode_jpg(frame_jpg), preds)
         util.write_packet(subscriber_sock, annotated_jpg)
