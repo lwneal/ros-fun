@@ -12,51 +12,16 @@ import message_filters
 from theora_image_transport.msg import Packet
 from sensor_msgs.msg import CompressedImage
 
+import util
 
-video_file = 'video.ogv'
-timestamp_file = 'timestamps.txt'
+import capnp
+from frametalk_capnp import FrameMsg
 
 PORT = 1234
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 MAX_FPS = 8
 last_sent_at = 0
-
-def store(frame, timestamp):
-    timestamp_str = '{:.03f}\n'.format(timestamp)
-    open(video_file, 'ab').write(frame)
-    open(timestamp_file, 'a').write(timestamp_str)
-
-
-def stream(data):
-    packet_type = '\x42'
-    encoded_len = struct.pack('!l', len(data))
-    try:
-        s.send(packet_type + encoded_len + data)
-    except:
-        print("flagrant system error, exiting now")
-        rospy.signal_shutdown('socket dead')
-
-
-def check():
-    video_data = open(video_file).read()
-    timestamps = open(timestamp_file).readlines()
-    return len(video_data), len(timestamps)
-
-
-def video_callback(msg):
-    global last_sent_at
-    frame_data = msg.data
-    timestamp = msg.header.stamp.to_sec()
-    latency = time.time() - timestamp
-
-    if time.time() - last_sent_at > 1.0 / MAX_FPS:
-        msg = "\rStreaming video frame size {:8d} age {:.3f} seconds[K".format(len(frame_data), latency)
-        sys.stdout.write(msg)
-        sys.stdout.flush()
-        store(frame_data, timestamp)
-        stream(frame_data)
-        last_sent_at = time.time()
 
 
 def main(topic, server_ip):
@@ -69,6 +34,29 @@ def main(topic, server_ip):
     sub_img.registerCallback(video_callback)
     print("Entering ROS spin event loop")
     rospy.spin()
+
+
+def video_callback(ros_msg):
+    global last_sent_at
+    msg = FrameMsg.new_message()
+    msg.timestampEpoch = ros_msg.header.stamp.to_sec()
+    msg.frameData = ros_msg.data
+
+    if time.time() - last_sent_at > 1.0 / MAX_FPS:
+        send_frame(msg)
+        last_sent_at = time.time()
+    else:
+        pass  # Skip this frame
+
+
+def send_frame(out_msg):
+    latency = time.time() - out_msg.timestampEpoch
+    print('Streaming video frame size {:8d} age {:.3f}s'.format(len(out_msg.frameData), latency))
+    try:
+        util.write_packet(s, out_msg.to_bytes())
+    except:
+        print("Cloud server connection closed, exiting now")
+        rospy.signal_shutdown('socket dead')
 
 
 if __name__ == '__main__':

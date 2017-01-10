@@ -3,9 +3,13 @@ from PIL import Image
 import numpy as np
 from StringIO import StringIO
 
+import capnp
+from frametalk_capnp import FrameMsg
+
 
 def read_packet(conn):
     packet_type_bytes = conn.recv(1)
+    assert packet_type_bytes == '\x01'
     packet_type = ord(packet_type_bytes)
     packet_len_bytes = conn.recv(4)
     packet_len = struct.unpack('!l', packet_len_bytes)[0]
@@ -13,11 +17,11 @@ def read_packet(conn):
     while len(packet_data) < packet_len:
         packet_data_bytes = conn.recv(packet_len - len(packet_data))
         packet_data = packet_data + packet_data_bytes
-    return packet_type, packet_data
+    return FrameMsg.from_bytes(packet_data).to_dict()
 
 
 def write_packet(conn, data):
-    packet_type = '\x42'
+    packet_type = '\x01'
     encoded_len = struct.pack('!l', len(data))
     conn.send(packet_type + encoded_len + data)
 

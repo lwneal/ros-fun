@@ -10,21 +10,24 @@ from PIL import Image
 
 sys.path.append('..')
 import util
+import capnp
+from frametalk_capnp import FrameMsg
+
 
 DEFAULT_ADDR = ('127.0.0.1', 1237)
+
 
 def resnet(jpg_data, addr=DEFAULT_ADDR):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(addr)
-    util.write_packet(s, jpg_data)
-    response_type, response_data = util.read_packet(s)
+    requestMsg = FrameMsg.new_message()
+    requestMsg.frameData = jpg_data
+    util.write_packet(s, requestMsg.to_bytes())
+
+    responseMsg = util.read_packet(s)
+    response_data = responseMsg['frameData']
     preds = pickle.loads(response_data)
     return preds
-
-
-def get_dimensions(jpg_data):
-    img = Image.open(StringIO(jpg_data))
-    return img.size
 
 
 if __name__ == '__main__':

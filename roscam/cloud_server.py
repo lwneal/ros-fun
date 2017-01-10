@@ -13,6 +13,8 @@ import numpy as np
 
 import human_detector
 import block_storage
+import capnp
+from frametalk_capnp import FrameMsg
 
 human_detector.init('human_detector/model.h5')
 
@@ -30,20 +32,19 @@ def build_visual_output(pixels, preds):
 def handle_robot(robot_sock, subscriber_sock):
     bs = block_storage.BlockStorageContext()
     while True:
-        packet_type, frame_jpg = util.read_packet(robot_sock)
-        bs.store(frame_jpg, time.time())  # TODO: propagate timestamps from ROS using capnp
+        msg = util.read_packet(robot_sock)
+        frame_jpg = msg['frameData']
+        timestamp = msg['timestampEpoch']
+
+        bs.store(frame_jpg, timestamp)  # TODO: propagate timestamps from ROS using capnp
+
         preds = human_detector.detect_human(frame_jpg)
         annotated_jpg = build_visual_output(util.decode_jpg(frame_jpg), preds)
-        util.write_packet(subscriber_sock, annotated_jpg)
 
-
-def call_vision_server(jpg_data):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.connect(('127.0.0.1', 1237))
-    util.write_packet(s, jpg_data)
-    _, jpg_result = util.read_packet(s)
-    return jpg_result
+        outputMsg = FrameMsg.new_message()
+        outputMsg.frameData = annotated_jpg
+        outputMsg.timestampEpoch = timestamp
+        util.write_packet(subscriber_sock, outputMsg.to_bytes())
 
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

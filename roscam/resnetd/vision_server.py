@@ -10,7 +10,9 @@ from PIL import Image
 
 sys.path.append('..')
 import neural_network
-from util import read_packet, write_packet
+import util
+import capnp
+from frametalk_capnp import FrameMsg
 
 
 neural_network.init()
@@ -43,18 +45,16 @@ def encode_jpg(pixels):
 
 def handle_client(conn):
     start_time = time.time()
-    packet_type, jpg_image = read_packet(conn)
+    msg = util.read_packet(conn)
+    jpg_image = msg['frameData']
     preds = resnet_jpg(jpg_image)
-    #print("Preds have shape {}".format(preds.shape))
 
     # Round activations to 8-bit values
     preds = preds.astype(np.uint8)
 
-    data = pickle.dumps(preds)
-    write_packet(conn, data)
-    compressed = data.encode('zlib')
-    print("Wrote pickle packet length {} in {:.3f}s (compressed length {})".format(len(data), time.time() - start_time, len(compressed)))
-    #print("Produced JPG length {:10d} in {:.3f}s".format(len(output_img), time.time() - start_time))
+    outputMsg = FrameMsg.new_message()
+    outputMsg.frameData = pickle.dumps(preds)
+    util.write_packet(conn, outputMsg.to_bytes())
 
 if __name__ == '__main__':
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
