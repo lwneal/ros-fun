@@ -9,13 +9,13 @@ import numpy as np
 from PIL import Image
 
 sys.path.append('..')
-import neural_network
+import resnet
 import util
 import capnp
 from frametalk_capnp import FrameMsg
 
 
-neural_network.init()
+resnet.init()
 
 
 def resnet_jpg(jpg_data):
@@ -24,7 +24,7 @@ def resnet_jpg(jpg_data):
     #print("Decoded input jpg in {:.3f}".format(time.time() - start_time))
 
     start_time = time.time()
-    preds = neural_network.run(pixels)
+    preds = resnet.run(pixels)
     #print("Ran ResNet50 in {:.3f}s".format(time.time() - start_time))
     # Remove extra dimension
     return preds.reshape(preds.shape[1:])
