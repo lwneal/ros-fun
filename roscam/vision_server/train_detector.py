@@ -6,7 +6,7 @@ import numpy as np
 from PIL import Image
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../resnetd'))
-from vision_client import resnet
+import client
 import dataset_coco
 
 
@@ -62,7 +62,7 @@ def get_example():
     jpg_data = open(meta['filename']).read()
     mask = dataset_coco.human_detection_mask(meta)
 
-    x = resnet(jpg_data)
+    x = client.run_resnet(jpg_data)
     y = rescale(mask, x.shape)
 
     # Fill all images into a max-sized 32x32 activation mask

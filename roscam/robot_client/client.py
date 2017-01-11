@@ -6,13 +6,15 @@ import os
 import sys
 import struct
 import time
-import rospy
 import socket
 import message_filters
+
+import rospy
 from theora_image_transport.msg import Packet
 from sensor_msgs.msg import CompressedImage
 
-import util
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from shared import util
 
 import capnp
 from frametalk_capnp import FrameMsg

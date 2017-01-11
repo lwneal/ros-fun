@@ -5,19 +5,21 @@ import struct
 import socket
 from StringIO import StringIO
 
-import numpy as np
-from PIL import Image
-
-sys.path.append('..')
-import util
+from shared import util
 import capnp
 from frametalk_capnp import FrameMsg
+
+import sys
+import os
+
+import numpy as np
+from PIL import Image
 
 
 DEFAULT_ADDR = ('127.0.0.1', 1237)
 
 
-def resnet(jpg_data, addr=DEFAULT_ADDR):
+def run_resnet(jpg_data, addr=DEFAULT_ADDR):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(addr)
     requestMsg = FrameMsg.new_message()
@@ -28,6 +30,11 @@ def resnet(jpg_data, addr=DEFAULT_ADDR):
     response_data = responseMsg['frameData']
     preds = pickle.loads(response_data)
     return preds
+
+
+def detect_human(jpg_data):
+    # TODO: RPC to the vision server
+    return jpg_data
 
 
 if __name__ == '__main__':
@@ -42,3 +49,4 @@ if __name__ == '__main__':
     activations = resnet(jpg_data, addr)
     print("Activations shape {}".format(activations.shape))
     print(activations)
+

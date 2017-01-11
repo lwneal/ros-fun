@@ -1,22 +1,22 @@
-"""
-Listens on port 1234 for a connection from roscam_client.py, then accepts frames
-"""
 import time
 import socket
 import struct
 import sys
 import os
-import util
 
+import capnp
 from PIL import Image
 import numpy as np
 
-import human_detector
-import block_storage
-import capnp
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from shared import util
+from shared import vision_api
+from cloud_server import block_storage
 from frametalk_capnp import FrameMsg
 
-human_detector.init('human_detector/model.h5')
+
+MODELS_DIR = '/home/nealla/models'
 
 
 def build_visual_output(pixels, preds):
@@ -38,38 +38,37 @@ def handle_robot(robot_sock, subscriber_sock):
 
         bs.store(frame_jpg, timestamp)  # TODO: propagate timestamps from ROS using capnp
 
-        preds = human_detector.detect_human(frame_jpg)
-        annotated_jpg = build_visual_output(util.decode_jpg(frame_jpg), preds)
+        #preds = vision_api.detect_human(frame_jpg)
+        #annotated_jpg = build_visual_output(util.decode_jpg(frame_jpg), preds)
 
         outputMsg = FrameMsg.new_message()
-        outputMsg.frameData = annotated_jpg
+        #outputMsg.frameData = annotated_jpg
+        outputMsg.frameData = frame_jpg
         outputMsg.timestampEpoch = timestamp
         util.write_packet(subscriber_sock, outputMsg.to_bytes())
 
+if __name__ == '__main__':
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(('0.0.0.0', 1234))
+    s.listen(1)
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-s.bind(('0.0.0.0', 1234))
-s.listen(1)
+    t = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    t.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    t.bind(('0.0.0.0', 1235))
+    t.listen(1)
 
-t = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-t.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-t.bind(('0.0.0.0', 1235))
-t.listen(1)
+    while True:
+        print("Waiting for connection")
 
+        def connect(s):
+            sys.stderr.write("Waiting for connection on {}\n".format(s))
+            conn, addr = s.accept()
+            sys.stderr.write("Recv connection from {} {}\n".format(conn, addr))
+            return conn
 
-while True:
-    print("Waiting for connection")
+        conn = connect(s)
+        conn2 = connect(t)
+        handle_robot(conn, conn2)
 
-    def connect(s):
-        sys.stderr.write("Waiting for connection on {}\n".format(s))
-        conn, addr = s.accept()
-        sys.stderr.write("Recv connection from {} {}\n".format(conn, addr))
-        return conn
-
-    conn = connect(s)
-    conn2 = connect(t)
-
-    handle_robot(conn, conn2)
-
-sys.stderr.write("Connection closed\n")
+    sys.stderr.write("Connection closed\n")

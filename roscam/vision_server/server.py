@@ -5,13 +5,13 @@ import struct
 import os
 import socket
 from cStringIO import StringIO
+
 import numpy as np
 from PIL import Image
-
-sys.path.append('..')
-import resnet
-import util
 import capnp
+
+import resnet
+from shared import util
 from frametalk_capnp import FrameMsg
 
 

@@ -1,6 +1,4 @@
-"""
-An HTTP video streamer
-"""
+import os
 import time
 import sys
 import struct
@@ -8,8 +6,9 @@ import flask
 import socket
 from base64 import b64encode
 
-import util
-import block_storage
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from shared import util
+from cloud_server import block_storage
 
 CLOUD_SERVER = ('localhost', 1235)
 app = flask.Flask(__name__)
