@@ -35,3 +35,10 @@ def encode_jpg(pixels):
 
 def decode_jpg(jpg):
     return np.array(Image.open(StringIO(jpg)).convert('RGB'))
+
+
+def rescale(image, shape):
+    # TODO: Get rid of imresize
+    from scipy.misc import imresize
+    return imresize(image, shape).astype(float) / 255.0
+

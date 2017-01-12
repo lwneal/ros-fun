@@ -13,12 +13,6 @@ import human_detector
 import dataset_coco
 
 
-def rescale(image, shape):
-    # TODO: Get rid of imresize
-    from scipy.misc import imresize
-    return imresize(image, shape).astype(float) / 255.0
-
-
 def get_example():
     meta, pixels = dataset_coco.random_image()
     mask = dataset_coco.human_detection_mask(meta)
@@ -26,7 +20,7 @@ def get_example():
     jpg_data = open(meta['filename']).read()
     pixels = util.decode_jpg(jpg_data)
     x = resnet.run(pixels)
-    y = rescale(mask, x.shape)
+    y = util.rescale(mask, x.shape)
 
     # HACK: Fill all images into a max-sized 32x32 activation mask
     x_i = np.zeros((32, 32, 2048))
