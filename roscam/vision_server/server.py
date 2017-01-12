@@ -13,25 +13,28 @@ import capnp
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import resnet
+import human_detector
 from shared import util
-from frametalk_capnp import FrameMsg, VisionRequestType
+from frametalk_capnp import FrameMsg
 
 
-def resnet_jpg(pixels):
+def resnet_request(pixels):
     preds = resnet.run(pixels)
     # Remove extra dimension
     preds = preds.reshape(preds.shape[1:])
     # Round activations to 8-bit values
     preds = preds.astype(np.uint8)
+    # Output Shape: (15, 20, 2048)
     return preds
 
 
 def detect_human_request(pixels):
     preds = human_detector.run(pixels)
-    # Remove extra dimension
-    preds = preds.reshape(preds.shape[1:])
+    # Remove extra dimensions
+    preds = preds.reshape(preds.shape[1:-1]) * 255.0
     # Round activations to 8-bit values
     preds = preds.astype(np.uint8)
+    # Output Shape: (15, 20)
     return preds
 
 
@@ -43,13 +46,15 @@ def handle_client(conn):
 
     pixels = util.decode_jpg(jpg_image)
 
-    if requestType == 0:
+    print "Got request len {} with type {}".format(len(jpg_image), requestType)
+    if requestType == 'resNet50':
         # Return rounded preds as pickle
         preds = resnet_request(pixels)
-    elif requestType == VisionRequestType.detectHuman:
+    elif requestType == 'detectHuman':
         # Detect humans, return pickled preds
         preds = detect_human_request(pixels)
 
+    print("generated preds {} min {} max {}".format(preds.shape, preds.min(), preds.max()))
     outputMsg = FrameMsg.new_message()
     outputMsg.frameData = pickle.dumps(preds)
     util.write_packet(conn, outputMsg.to_bytes())
@@ -57,9 +62,11 @@ def handle_client(conn):
 
 
 if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print("Usage: server.py human_detector_model.h5")
+        exit()
 
-    resnet.init()
-    human_detector.init()
+    human_detector.init(filename=sys.argv[1])
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

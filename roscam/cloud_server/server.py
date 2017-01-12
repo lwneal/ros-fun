@@ -25,12 +25,27 @@ def handle_robot(robot_sock, subscriber_sock):
 
         bs.store(frame_jpg, timestamp)
 
-        annotated_jpg = vision_api.detect_human(frame_jpg)
+        preds = vision_api.detect_human(frame_jpg)
+
+        annotated_jpg = build_detection_visualization(frame_jpg, preds)
 
         outputMsg = FrameMsg.new_message()
         outputMsg.frameData = annotated_jpg
         outputMsg.timestampEpoch = timestamp
         util.write_packet(subscriber_sock, outputMsg.to_bytes())
+
+
+def build_detection_visualization(frame_jpg, preds):
+    pixels = util.decode_jpg(frame_jpg)
+
+    # TODO: Get rid of imresize
+    from scipy.misc import imresize
+    preds = imresize(preds, pixels.shape)
+
+    # Set the red channel to the output of the detector
+    pixels[:,:,0] = 0.5 * pixels[:,:,0] + 0.5 * preds
+    return util.encode_jpg(pixels)
+
 
 if __name__ == '__main__':
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
