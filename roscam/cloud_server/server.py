@@ -16,19 +16,6 @@ from cloud_server import block_storage
 from frametalk_capnp import FrameMsg
 
 
-MODELS_DIR = '/home/nealla/models'
-
-
-def build_visual_output(pixels, preds):
-    print 'got pixels shape {} preds shape {}'.format(pixels.shape, preds.shape)
-    shape = (pixels.shape[1], pixels.shape[0])
-    mask = np.array(Image.fromarray(preds * 255).resize(shape)).astype(np.uint8)
-
-    # Red overlay: output of network
-    pixels[:,:,0] = mask
-    return util.encode_jpg(pixels)
-
-
 def handle_robot(robot_sock, subscriber_sock):
     bs = block_storage.BlockStorageContext()
     while True:
@@ -36,14 +23,12 @@ def handle_robot(robot_sock, subscriber_sock):
         frame_jpg = msg['frameData']
         timestamp = msg['timestampEpoch']
 
-        bs.store(frame_jpg, timestamp)  # TODO: propagate timestamps from ROS using capnp
+        bs.store(frame_jpg, timestamp)
 
-        #preds = vision_api.detect_human(frame_jpg)
-        #annotated_jpg = build_visual_output(util.decode_jpg(frame_jpg), preds)
+        annotated_jpg = vision_api.detect_human(frame_jpg)
 
         outputMsg = FrameMsg.new_message()
-        #outputMsg.frameData = annotated_jpg
-        outputMsg.frameData = frame_jpg
+        outputMsg.frameData = annotated_jpg
         outputMsg.timestampEpoch = timestamp
         util.write_packet(subscriber_sock, outputMsg.to_bytes())
 
@@ -62,12 +47,12 @@ if __name__ == '__main__':
         print("Waiting for connection")
 
         def connect(s):
-            sys.stderr.write("Waiting for connection on {}\n".format(s))
             conn, addr = s.accept()
-            sys.stderr.write("Recv connection from {} {}\n".format(conn, addr))
             return conn
 
+        print("Waiting for ROS client connection")
         conn = connect(s)
+        print("Waiting for website viewer connection")
         conn2 = connect(t)
         handle_robot(conn, conn2)
 

@@ -10,6 +10,8 @@ import numpy as np
 from PIL import Image
 import capnp
 
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import resnet
 from shared import util
 from frametalk_capnp import FrameMsg

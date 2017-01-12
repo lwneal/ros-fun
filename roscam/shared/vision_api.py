@@ -1,3 +1,5 @@
+import sys
+import os
 import pickle
 import math
 import sys
@@ -5,15 +7,12 @@ import struct
 import socket
 from StringIO import StringIO
 
-from shared import util
 import capnp
-from frametalk_capnp import FrameMsg
-
-import sys
-import os
-
 import numpy as np
 from PIL import Image
+
+from shared import util
+from frametalk_capnp import FrameMsg
 
 
 DEFAULT_ADDR = ('127.0.0.1', 1237)
@@ -33,20 +32,15 @@ def run_resnet(jpg_data, addr=DEFAULT_ADDR):
 
 
 def detect_human(jpg_data):
-    # TODO: RPC to the vision server
-    return jpg_data
+    pixels = util.decode_jpg(jpg_data)
 
+    preds = run_resnet(jpg_data)[:,:,0]
 
-if __name__ == '__main__':
-    addr = DEFAULT_ADDR
-    if len(sys.argv) < 2:
-        print("Usage: {} input.jpg [server] > output.jpg".format(sys.argv[0]))
-        print("server: defaults to localhost")
-        exit()
-    jpg_data = open(sys.argv[1]).read()
-    if len(sys.argv) > 2:
-        addr = (sys.argv[2], 1237)
-    activations = resnet(jpg_data, addr)
-    print("Activations shape {}".format(activations.shape))
-    print(activations)
+    print 'got pixels shape {} preds shape {}'.format(pixels.shape, preds.shape)
+    shape = (pixels.shape[1], pixels.shape[0])
+    mask = np.array(Image.fromarray(preds * 255).resize(shape)).astype(np.uint8)
+
+    # Red overlay: output of network
+    pixels[:,:,0] = mask
+    return util.encode_jpg(pixels)
 
