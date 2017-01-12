@@ -31,7 +31,7 @@ def resnet_request(pixels):
 def detect_human_request(pixels):
     preds = human_detector.run(pixels)
     # Remove extra dimensions
-    preds = preds.reshape(preds.shape[1:-1]) * 255.0
+    preds = preds.reshape(preds.shape[1:-1]) * 255
     # Round activations to 8-bit values
     preds = preds.astype(np.uint8)
     # Output Shape: (15, 20)

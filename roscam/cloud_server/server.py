@@ -38,9 +38,7 @@ def handle_robot(robot_sock, subscriber_sock):
 def build_detection_visualization(frame_jpg, preds):
     pixels = util.decode_jpg(frame_jpg)
 
-    # TODO: Get rid of imresize
-    from scipy.misc import imresize
-    preds = imresize(preds, pixels.shape)
+    preds = util.rescale(preds, pixels.shape)
 
     # Set the red channel to the output of the detector
     pixels[:,:,0] = 0.5 * pixels[:,:,0] + 0.5 * preds

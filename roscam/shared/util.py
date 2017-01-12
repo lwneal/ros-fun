@@ -40,5 +40,5 @@ def decode_jpg(jpg):
 def rescale(image, shape):
     # TODO: Get rid of imresize
     from scipy.misc import imresize
-    return imresize(image, shape).astype(float) / 255.0
+    return imresize(image, shape).astype(float)
 
