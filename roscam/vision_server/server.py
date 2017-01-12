@@ -74,7 +74,6 @@ if __name__ == '__main__':
     s.listen(1)
 
     while True:
-        #print("Waiting for connection...")
         conn, addr = s.accept()
         start_time = time.time()
         handle_client(conn)
