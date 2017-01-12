@@ -12,17 +12,18 @@ import numpy as np
 from PIL import Image
 
 from shared import util
-from frametalk_capnp import FrameMsg
+from frametalk_capnp import FrameMsg, VisionRequestType
 
 
 DEFAULT_ADDR = ('127.0.0.1', 1237)
 
 
-def run_resnet(jpg_data, addr=DEFAULT_ADDR):
+def vision_request(jpg_data, request_type, addr=DEFAULT_ADDR):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(addr)
     requestMsg = FrameMsg.new_message()
     requestMsg.frameData = jpg_data
+    requestMsg.visionType = request_type
     util.write_packet(s, requestMsg.to_bytes())
 
     responseMsg = util.read_packet(s)
@@ -31,16 +32,9 @@ def run_resnet(jpg_data, addr=DEFAULT_ADDR):
     return preds
 
 
+def run_resnet(jpg_data):
+    return vision_request(jpg_data, request_type=VisionRequestType.resNet50)
+
+
 def detect_human(jpg_data):
-    pixels = util.decode_jpg(jpg_data)
-
-    preds = run_resnet(jpg_data)[:,:,0]
-
-    print 'got pixels shape {} preds shape {}'.format(pixels.shape, preds.shape)
-    shape = (pixels.shape[1], pixels.shape[0])
-    mask = np.array(Image.fromarray(preds * 255).resize(shape)).astype(np.uint8)
-
-    # Red overlay: output of network
-    pixels[:,:,0] = mask
-    return util.encode_jpg(pixels)
-
+    return vision_request(jpg_data, request_type=VisionRequestType.detectHuman)

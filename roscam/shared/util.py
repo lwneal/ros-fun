@@ -34,4 +34,4 @@ def encode_jpg(pixels):
 
 
 def decode_jpg(jpg):
-    return np.array(Image.open(StringIO(jpg)))
+    return np.array(Image.open(StringIO(jpg)).convert('RGB'))

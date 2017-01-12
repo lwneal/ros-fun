@@ -14,51 +14,53 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import resnet
 from shared import util
-from frametalk_capnp import FrameMsg
+from frametalk_capnp import FrameMsg, VisionRequestType
 
 
-resnet.init()
-
-
-def resnet_jpg(jpg_data):
-    start_time = time.time()
-    pixels = decode_jpg(jpg_data)
-    #print("Decoded input jpg in {:.3f}".format(time.time() - start_time))
-
-    start_time = time.time()
+def resnet_jpg(pixels):
     preds = resnet.run(pixels)
-    #print("Ran ResNet50 in {:.3f}s".format(time.time() - start_time))
     # Remove extra dimension
-    return preds.reshape(preds.shape[1:])
+    preds = preds.reshape(preds.shape[1:])
+    # Round activations to 8-bit values
+    preds = preds.astype(np.uint8)
+    return preds
 
 
-def decode_jpg(jpg_data):
-    fp = StringIO(jpg_data)
-    img = Image.open(fp)
-    return np.array(img.convert('RGB'))
-
-
-def encode_jpg(pixels):
-    pil_img = Image.fromarray(pixels.astype(np.uint8))
-    fp = StringIO()
-    pil_img.save(fp, format='JPEG', quality=100)
-    return fp.getvalue()
+def detect_human_request(pixels):
+    preds = human_detector.run(pixels)
+    # Remove extra dimension
+    preds = preds.reshape(preds.shape[1:])
+    # Round activations to 8-bit values
+    preds = preds.astype(np.uint8)
+    return preds
 
 
 def handle_client(conn):
     start_time = time.time()
     msg = util.read_packet(conn)
     jpg_image = msg['frameData']
-    preds = resnet_jpg(jpg_image)
+    requestType = msg['visionType']
 
-    # Round activations to 8-bit values
-    preds = preds.astype(np.uint8)
+    pixels = util.decode_jpg(jpg_image)
+
+    if requestType == 0:
+        # Return rounded preds as pickle
+        preds = resnet_request(pixels)
+    elif requestType == VisionRequestType.detectHuman:
+        # Detect humans, return pickled preds
+        preds = detect_human_request(pixels)
 
     outputMsg = FrameMsg.new_message()
     outputMsg.frameData = pickle.dumps(preds)
     util.write_packet(conn, outputMsg.to_bytes())
+    print("Finished request type {} in {:.3f}s".format(requestType, time.time() - start_time))
+
 
 if __name__ == '__main__':
+
+    resnet.init()
+    human_detector.init()
+
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.bind(('0.0.0.0', 1237))
