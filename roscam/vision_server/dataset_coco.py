@@ -29,7 +29,7 @@ def load_jpg(filename, url=None):
     if not os.path.exists(filename) and url:
         print("Image {} not cached, downloading from {}".format(filename, url))
         urllib.urlretrieve(url, filename)
-    img = Image.open(filename)
+    img = Image.open(filename).convert('RGB')
     return np.array(img)
 
 
