@@ -19,13 +19,9 @@ from frametalk_capnp import FrameMsg
 def handle_robot(robot_sock, subscriber_sock):
     bs = block_storage.BlockStorageContext()
     while True:
-        """
         msg = util.read_packet(robot_sock)
         frame_jpg = msg['frameData']
         timestamp = msg['timestampEpoch']
-        """
-        frame_jpg = util.read_packet_raw(robot_sock)
-        timestamp = time.time()
 
         bs.store(frame_jpg, timestamp)
 
