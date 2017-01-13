@@ -173,7 +173,8 @@ def build_model():
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=1.0)
     return model
 
-model = build_model()
-while True:
-    train_one_round(model)
-    demonstrate(model)
+if __name__ == '__main__':
+    model = build_model()
+    while True:
+        train_one_round(model)
+        demonstrate(model)
