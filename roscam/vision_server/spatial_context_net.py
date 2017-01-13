@@ -22,7 +22,7 @@ import resnet
 resnet.init()
 
 TIMESTEPS = 16
-MAX_OUTPUT_WORDS = 22
+MAX_OUTPUT_WORDS = 32
 
 def load_img(name):
     return util.decode_jpg(open(name).read())
@@ -98,9 +98,21 @@ def left_pad(input_array, to_size=TIMESTEPS):
 def clip(x, minval=0, maxval=32):
     return np.clip(x, minval, maxval)
 
-def extract_features(img, x, y):
+def pad_preds(preds, to_size=32):
+    height, width, depth = preds.shape
+    height = min(height, to_size)
+    width = min(width, to_size)
+    padded = np.zeros((to_size, to_size, depth))
+    padded[:height, :width] = preds[:height, :width]
+    return padded
+
+def extract_features(img, x, y, preds=None):
     example_x = np.zeros((TIMESTEPS, 2048, 4))
-    resnet_preds = resnet.run(img)
+    resnet_preds = preds if preds is not None else resnet.run(img)
+    # Pad preds to 32x32
+    resnet_preds = pad_preds(resnet_preds, to_size=32)
+    x = np.clip(x, 0, 31)
+    y = np.clip(y, 0, 31)
     # Extract context, padded and in correct order, from left/right/top/bottom
     example_x[:,:,0] = left_pad(resnet_preds[y,                         clip(x - TIMESTEPS) : x,    :])
     example_x[:,:,1] = left_pad(resnet_preds[y,                         x : clip(x + TIMESTEPS),    :][::-1])
@@ -108,11 +120,11 @@ def extract_features(img, x, y):
     example_x[:,:,3] = left_pad(resnet_preds[y : clip(y + TIMESTEPS),   x,                          :][::-1])
     return example_x
 
-def extract_example(img, box, phrase):
+def extract_example(img, box, phrase, preds=None):
     # Convert from image coordinates to resnet activation coordinates
     x0, x1, y0, y1 = (val/32 for val in box)
     x, y = (x0 + x1) / 2, (y0+y1)/2
-    example_x = extract_features(img, x, y)
+    example_x = extract_features(img, x, y, preds=preds)
     # Expected output: the desired phrase
     example_y = np.zeros((MAX_OUTPUT_WORDS, 128))
     letters = str_to_onehot(phrase)
@@ -177,4 +189,5 @@ if __name__ == '__main__':
     model = build_model()
     while True:
         train_one_round(model)
-        demonstrate(model)
+        for i in range(10):
+            demonstrate(model)
