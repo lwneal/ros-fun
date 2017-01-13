@@ -42,3 +42,16 @@ def rescale(image, shape):
     from scipy.misc import imresize
     return imresize(image, shape).astype(float)
 
+
+
+def read_packet_raw(conn):
+    packet_type_bytes = conn.recv(1)
+    assert packet_type_bytes == '\x01'
+    packet_type = ord(packet_type_bytes)
+    packet_len_bytes = conn.recv(4)
+    packet_len = struct.unpack('!l', packet_len_bytes)[0]
+    packet_data = ""
+    while len(packet_data) < packet_len:
+        packet_data_bytes = conn.recv(packet_len - len(packet_data))
+        packet_data = packet_data + packet_data_bytes
+    return packet_data
