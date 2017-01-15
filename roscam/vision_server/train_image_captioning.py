@@ -46,10 +46,20 @@ def get_batch(batch_size=32):
     xvals = [x.squeeze(axis=-1) for x in np.split(X, 4, axis=-1)]
     return xvals, Y
 
+
+def draw_box(pixels, box):
+    x0, x1, y0, y1 = box
+    pixels[y0, x0:x1] = 255
+    pixels[y1, x0:x1] = 255
+    pixels[y0:y1, x0] = 255
+    pixels[y0:y1, x1] = 255
+
+
 def demonstrate(model):
     meta, pixels = dataset_coco.random_image()
     region = random.choice(meta['regions'])
     box = bbox(region)
+    draw_box(pixels, box)
 
     open('/tmp/example.jpg', 'w').write(util.encode_jpg(pixels))
     os.system('imgcat /tmp/example.jpg')
@@ -85,9 +95,9 @@ if __name__ == '__main__':
     else:
         model = spatial_context_net.build_model()
 
-    while True:
-        try:
+    try:
+        while True:
             train(model)
             model.save(output_filename)
-        except KeyboardInterrupt:
-            print("Stopping due to keyboard interrupt")
+    except KeyboardInterrupt:
+        print("Stopping due to keyboard interrupt")

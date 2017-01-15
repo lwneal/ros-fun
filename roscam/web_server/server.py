@@ -8,6 +8,7 @@ from base64 import b64encode
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared import util
+from shared import vision_api
 from cloud_server import block_storage
 
 CLOUD_SERVER = ('localhost', 1235)
@@ -52,9 +53,12 @@ def stream_recorded():
         # TODO: Session selection, for now choose a random one
         import random
         session = random.choice(block_storage.get_sessions())
+        from cloud_server.server import build_detection_visualization
         for ts, jpg_data in block_storage.read_frames(session['id']):
             time.sleep(.05)  # TODO: rate limit?
-            yield 'data:image/jpeg;base64,{}\n\n'.format(b64encode(jpg_data))
+            preds = vision_api.detect_human(jpg_data)
+            annotated_jpg = build_detection_visualization(jpg_data, preds)
+            yield 'data:image/jpeg;base64,{}\n\n'.format(b64encode(annotated_jpg))
     return flask.Response(generate(), mimetype='text/event-stream')
 
 if __name__ == '__main__':
