@@ -19,22 +19,29 @@ import spatial_context_net
 def bbox(region):
     return (region['x'], region['x'] + region['width'], region['y'], region['y'] + region['height'])
 
+def coords(bbox):
+    # Convert from image to resnet output coordinates
+    x0, x1, y0, y1 = [v/32 for v in bbox]
+    return (x0+x1)/2, (y0+y1)/2
+
 
 def get_next_example():
     while True:
         meta, pixels = dataset_coco.random_image()
-        preds = resnet.run(pixels)
-        #for region in meta['regions']:
-        phrase = random.choice(region['phrase'])
-        phrase = '{} {} {}'.format(nlp_api.START_TOKEN, phrase[:spatial_context_net.MAX_OUTPUT_WORDS-2], nlp_api.END_TOKEN)
-        print phrase
-        x0, x1, y0, y1 = [v/32 for v in bbox(region)]  # Convert from image to resnet output coordinates
-        x = spatial_context_net.extract_features(pixels, (x0+x1)/2, (y0+y1)/2, preds=preds)
+        region = random.choice(meta['regions'])
+        input_phrase = region['phrase']
+        words = input_phrase.split()[:spatial_context_net.MAX_OUTPUT_WORDS - 2]
+        phrase = ' '.join(words)
+
+        u, v = coords(bbox(region))
+        x = spatial_context_net.extract_features(pixels, u, v)
         y = nlp_api.words_to_onehot(phrase, pad_to_length=spatial_context_net.MAX_OUTPUT_WORDS)
+        print("Training on word sequence: {}".format(
+            nlp_api.onehot_to_words(y)))
         yield x, y
 
 
-def get_batch(batch_size=20):
+def get_batch(batch_size=32):
     X = []
     Y = []
     generator = get_next_example()
@@ -66,7 +73,7 @@ def demonstrate(model):
         pass
 
     open('/tmp/example.jpg', 'w').write(util.encode_jpg(pixels))
-    os.system('imgcat /tmp/example.jpg')
+    #os.system('imgcat /tmp/example.jpg')
 
     x = spatial_context_net.extract_features(pixels, box[0]/32, box[2]/32)
     x = np.expand_dims(x, axis=0)
