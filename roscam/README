@@ -3,13 +3,16 @@ Instructions to run
 On the cloud server:
 
     # This handles incoming video streams
-    python cloud_server.py
+    python cloud_server/server.py
 
     # This is a web server
-    python web_server.py
+    python web_server/server.py
 
-    # This one takes 30 seconds or so to warm up
-    python vision_server.py
+    # Takes video streams and performs computer vision
+    python vision_server/server.py
+
+    # Takes text input and performs NLP
+    python nlp_server/server.py
 
 On the robot:
 
