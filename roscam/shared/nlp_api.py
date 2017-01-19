@@ -3,29 +3,32 @@ import requests
 import pickle
 import numpy as np
 
+WORDVEC_DIM = 400 * 1000
+START_TOKEN = '--'
+END_TOKEN = '...'
+END_TOKEN_IDX = 435
+UNKNOWN_TOKEN = 'unk'
+
 def words_to_vec(text):
     URL = 'http://localhost:8010/words_to_vec'
     r = requests.get(URL, data = {'text': text})
-    print('got response length {}'.format(len(r.text)))
     words = pickle.loads(r.text)
     vectors, indices = zip(*words)
     return vectors, indices
 
 
 def indices_to_onehot(indices):
-    WORDVEC_DIM = 400 * 1000
-    onehot = np.zeros((WORDVEC_DIM, len(indices)))
+    onehot = np.zeros((len(indices), WORDVEC_DIM))
     for (i, idx) in enumerate(indices):
-        onehot[idx][i] = 1.0
+        onehot[i][idx] = 1.0
     return onehot
 
 
 def onehot_to_indices(onehot):
     indices = []
-    dimensionality, word_count = onehot.shape
-    print 'Converting {} one-hot words to indices'.format(word_count)
+    word_count, dimensionality = onehot.shape
     for i in range(word_count):
-        indices.append(np.argmax(onehot[:,i]))
+        indices.append(np.argmax(onehot[i]))
     return indices
 
 
@@ -36,3 +39,20 @@ def indices_to_words(indices):
     words = r.text
     return words
 
+
+def onehot_to_words(onehot):
+    return indices_to_words(onehot_to_indices(onehot))
+
+
+def words_to_onehot(words, pad_to_length=None):
+    vectors, indices = words_to_vec(words)
+    if pad_to_length:
+        ret = np.zeros((pad_to_length, WORDVEC_DIM))
+        v = indices_to_onehot(indices)
+        word_count = v.shape[0]
+        ret[:word_count] = v
+        # Pad right with END_TOKEN
+        ret[word_count:, END_TOKEN_IDX] = 1.0
+        return ret
+    else:
+        return indices_to_onehot(indices)
