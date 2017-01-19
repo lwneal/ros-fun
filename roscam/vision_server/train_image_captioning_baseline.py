@@ -13,15 +13,18 @@ from shared import util
 from shared import nlp_api
 import resnet
 import dataset_coco
-import spatial_context_net
+import baseline_net as network
+import recurrentshop
 
 
 def bbox(region):
     return (region['x'], region['x'] + region['width'], region['y'], region['y'] + region['height'])
 
-def coords(bbox):
-    # Convert from image to resnet output coordinates
-    x0, x1, y0, y1 = [v/32 for v in bbox]
+def coords(region, meta):
+    # Convert from VG coords to resnet output coordinates
+    resnet_scale = 1 / 32.0
+    box_scale = 1.0 * meta['width'] / meta['vg_width']
+    x0, x1, y0, y1 = [v * box_scale * resnet_scale for v in bbox(region)]
     return (x0+x1)/2, (y0+y1)/2
 
 
@@ -30,18 +33,16 @@ def get_next_example():
         meta, pixels = dataset_coco.random_image()
         region = random.choice(meta['regions'])
         input_phrase = region['phrase']
-        words = input_phrase.split()[:spatial_context_net.MAX_OUTPUT_WORDS - 2]
-        phrase = ' '.join(words)
+        words = input_phrase.split()
 
-        u, v = coords(bbox(region))
-        x = spatial_context_net.extract_features(pixels, u, v)
-        y = nlp_api.words_to_onehot(phrase, pad_to_length=spatial_context_net.MAX_OUTPUT_WORDS)
-        print("Training on word sequence: {}".format(
-            nlp_api.onehot_to_words(y)))
+        u, v = coords(region, meta)
+        x = network.extract_features(pixels, u, v)
+        y = nlp_api.words_to_onehot(words, pad_to_length=network.MAX_OUTPUT_WORDS)
+        #print("Training on word sequence: {}".format( nlp_api.onehot_to_words(y)))
         yield x, y
 
 
-def get_batch(batch_size=32):
+def get_batch(batch_size=2):
     X = []
     Y = []
     generator = get_next_example()
@@ -51,8 +52,7 @@ def get_batch(batch_size=32):
         Y.append(y_i)
     X = np.array(X)
     Y = np.array(Y)
-    xvals = [x.squeeze(axis=-1) for x in np.split(X, 4, axis=-1)]
-    return xvals, Y
+    return X, Y
 
 
 def draw_box(pixels, box):
@@ -75,9 +75,8 @@ def demonstrate(model):
     open('/tmp/example.jpg', 'w').write(util.encode_jpg(pixels))
     #os.system('imgcat /tmp/example.jpg')
 
-    x = spatial_context_net.extract_features(pixels, box[0]/32, box[2]/32)
+    x = network.extract_features(pixels, box[0]/32, box[2]/32)
     x = np.expand_dims(x, axis=0)
-    x = [x.squeeze(axis=-1) for x in np.split(x, 4, axis=-1)]
     preds = model.predict(x)
     onehot_words = preds.reshape(preds.shape[1:])
     print('Prediction: {}'.format(nlp_api.onehot_to_words(onehot_words)))
@@ -105,7 +104,7 @@ if __name__ == '__main__':
         from keras.models import load_model
         model = load_model(input_filename)
     else:
-        model = spatial_context_net.build_model()
+        model = network.build_model()
 
     try:
         while True:
