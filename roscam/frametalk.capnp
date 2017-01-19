@@ -5,6 +5,12 @@ enum VisionRequestType {
     detectHuman @1;
 }
 
+struct RobotCommand {
+    headRelAzumith @0 :Float64;
+    headRelAltitude @1 :Float64;
+    descriptiveStatement @2 :Text;
+}
+
 struct FrameMsg {
     width @0 :Int32;
     height @1 :Int32;
@@ -12,4 +18,5 @@ struct FrameMsg {
     frameData @3 :Data;
 
     visionType @4 :VisionRequestType;
+    robotCommand @5 :RobotCommand;
 }

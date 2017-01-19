@@ -8,6 +8,7 @@ import struct
 import time
 import socket
 import message_filters
+import threading
 
 import rospy
 from theora_image_transport.msg import Packet
@@ -19,11 +20,25 @@ from shared import util
 import capnp
 from frametalk_capnp import FrameMsg
 
-PORT = 1234
+# Port 3389 is open in the engr network
+PORT = 3389
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-MAX_FPS = 8
+MAX_FPS = 10
 last_sent_at = 0
+running = True
+
+def read_from_socket():
+    try:
+        while running:
+            print("Reading packet...")
+            msg = util.read_packet(s)
+            command = msg['robotCommand']
+            dx = command['headRelAzumith']
+            dy = command['headRelAltitude']
+            print("Command: move head {} {}".format(dx, dy))
+    except:
+        exit()
 
 
 def main(topic, server_ip):
@@ -35,6 +50,9 @@ def main(topic, server_ip):
     sub_img = message_filters.Subscriber(topic, CompressedImage)
     sub_img.registerCallback(video_callback)
     print("Entering ROS spin event loop")
+    thread_recv = threading.Thread()
+    thread_recv.run = read_from_socket
+    thread_recv.start()
     rospy.spin()
 
 
@@ -52,12 +70,14 @@ def video_callback(ros_msg):
 
 
 def send_frame(out_msg):
+    global running
     latency = time.time() - out_msg.timestampEpoch
-    print('Streaming video frame size {:8d} age {:.3f}s'.format(len(out_msg.frameData), latency))
+    #print('Streaming video frame size {:8d} age {:.3f}s'.format(len(out_msg.frameData), latency))
     try:
         util.write_packet(s, out_msg.to_bytes())
     except:
         print("Cloud server connection closed, exiting now")
+        running = False
         rospy.signal_shutdown('socket dead')
 
 

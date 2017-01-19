@@ -25,7 +25,7 @@ def handle_robot(robot_sock, subscriber_sock):
 
         bs.store(frame_jpg, timestamp)
 
-        preds = vision_api.detect_human(frame_jpg)
+        preds, robotCommand = vision_api.detect_human(frame_jpg)
 
         annotated_jpg = build_detection_visualization(frame_jpg, preds)
 
@@ -33,6 +33,11 @@ def handle_robot(robot_sock, subscriber_sock):
         outputMsg.frameData = annotated_jpg
         outputMsg.timestampEpoch = timestamp
         util.write_packet(subscriber_sock, outputMsg.to_bytes())
+
+        commandMsg = FrameMsg.new_message()
+        commandMsg.robotCommand = robotCommand
+        util.write_packet(robot_sock, commandMsg.to_bytes())
+        print("Sent command to robot: {}".format(robotCommand))
 
 
 def build_detection_visualization(frame_jpg, preds):
@@ -46,15 +51,26 @@ def build_detection_visualization(frame_jpg, preds):
 
 
 if __name__ == '__main__':
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind(('0.0.0.0', 1234))
-    s.listen(1)
+    # TODO: Async networking
+    # This socket receives video from the robot
+    sock_robot_video = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock_robot_video.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    # Port 3389 is open over the engr network
+    sock_robot_video.bind(('0.0.0.0', 3389))
+    sock_robot_video.listen(1)
 
-    t = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    t.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    t.bind(('0.0.0.0', 1235))
-    t.listen(1)
+    # This socket sends commands to the robot
+    sock_robot_control = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock_robot_control.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    # Port 5432 is open over the engr network
+    sock_robot_control.bind(('0.0.0.0', 5432))
+    sock_robot_control.listen(1)
+
+    # This socket relays video to the viewer
+    sock_viewer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock_viewer.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock_viewer.bind(('0.0.0.0', 1235))
+    sock_viewer.listen(1)
 
     while True:
         print("Waiting for connection")
@@ -63,10 +79,12 @@ if __name__ == '__main__':
             conn, addr = s.accept()
             return conn
 
-        print("Waiting for ROS client connection")
-        conn = connect(s)
-        print("Waiting for website viewer connection")
-        conn2 = connect(t)
-        handle_robot(conn, conn2)
+        print("Waiting for robot video connection")
+        conn = connect(sock_robot_video)
 
-    sys.stderr.write("Connection closed\n")
+        #print("Waiting for robot control socket connection")
+        #conn = connect(sock_robot_control)
+
+        print("Waiting for website viewer connection")
+        conn2 = connect(sock_viewer)
+        handle_robot(conn, conn2)
