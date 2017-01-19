@@ -14,7 +14,6 @@ from shared import nlp_api
 import resnet
 import dataset_coco
 import baseline_net as network
-import recurrentshop
 
 
 def bbox(region):
@@ -25,7 +24,7 @@ def coords(region, meta):
     resnet_scale = 1 / 32.0
     box_scale = 1.0 * meta['width'] / meta['vg_width']
     x0, x1, y0, y1 = [v * box_scale * resnet_scale for v in bbox(region)]
-    return (x0+x1)/2, (y0+y1)/2
+    return int((x0+x1)/2), int((y0+y1)/2)
 
 
 def get_next_example():
@@ -34,15 +33,16 @@ def get_next_example():
         region = random.choice(meta['regions'])
         input_phrase = region['phrase']
         words = input_phrase.split()
+        text = ' '.join(words)
 
         u, v = coords(region, meta)
         x = network.extract_features(pixels, u, v)
-        y = nlp_api.words_to_onehot(words, pad_to_length=network.MAX_OUTPUT_WORDS)
+        y = nlp_api.words_to_onehot(text, pad_to_length=network.MAX_OUTPUT_WORDS)
         #print("Training on word sequence: {}".format( nlp_api.onehot_to_words(y)))
         yield x, y
 
 
-def get_batch(batch_size=2):
+def get_batch(batch_size=25):
     X = []
     Y = []
     generator = get_next_example()
@@ -91,7 +91,8 @@ def train(model):
             import traceback
             traceback.print_exc()
     print("Training start: weights avg: {}".format(model.get_weights()[0].mean()))
-    model.fit_generator(generator(), samples_per_epoch=256, nb_epoch=1)
+    X, Y = get_batch()
+    model.fit_generator(generator(), samples_per_epoch=500, nb_epoch=1)
     print("Training end: weights mean {}".format(model.get_weights()[0].mean()))
     demonstrate(model)
 

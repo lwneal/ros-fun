@@ -32,7 +32,7 @@ def words_to_vec():
 def indices_to_words():
     text = flask.request.values.get('indices')
     indices = json.loads(text)
-    words = [word_vector.word_list[i] for i in indices]
+    words = word_vector.indices_to_words(indices)
     return flask.Response(' '.join(words), mimetype='text/plain')
     
 
