@@ -3,11 +3,11 @@ import requests
 import pickle
 import numpy as np
 
-WORDVEC_DIM = 400 * 1000
-START_TOKEN = '--'
-END_TOKEN = '...'
-END_TOKEN_IDX = 435
-UNKNOWN_TOKEN = 'unk'
+VOCABULARY_SIZE = 28519  # TODO: get this programaticly
+START_TOKEN = '000'
+END_TOKEN = '001'
+UNKNOWN_TOKEN = 'stuff'
+END_TOKEN_IDX = 3
 
 def words_to_vec(text):
     URL = 'http://localhost:8010/words_to_vec'
@@ -18,7 +18,7 @@ def words_to_vec(text):
 
 
 def indices_to_onehot(indices):
-    onehot = np.zeros((len(indices), WORDVEC_DIM))
+    onehot = np.zeros((len(indices), VOCABULARY_SIZE))
     for (i, idx) in enumerate(indices):
         onehot[i][idx] = 1.0
     return onehot
@@ -50,7 +50,7 @@ def words_to_onehot(words, pad_to_length=None):
         v = indices_to_onehot(indices)
         word_count = min(v.shape[0], pad_to_length)
         # Fill from left with up to pad_to_length vectors
-        ret = np.zeros((pad_to_length, WORDVEC_DIM))
+        ret = np.zeros((pad_to_length, VOCABULARY_SIZE))
         ret[:word_count] = v[:word_count]
         # Fill right with END_TOKEN
         ret[word_count:, END_TOKEN_IDX] = 1.0

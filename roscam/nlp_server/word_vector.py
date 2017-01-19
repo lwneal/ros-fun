@@ -1,25 +1,35 @@
 import sys
 import numpy as np
 
-GLOVE_FILENAME = 'glove.6B.50d.txt'
-START_TOKEN = '--'
-END_TOKEN = '...'
-UNKNOWN_TOKEN = 'unk'
+GLOVE_FILENAME = '/home/nealla/models/glove.6B.50d.txt'
+START_TOKEN = '000'
+END_TOKEN = '011'
+UNKNOWN_TOKEN = 'stuff'
 
 glove_dict = None
-word_list = []
+word_idx = {}
 
 
 def init():
     global glove_dict
-    global word_list
+    global word_idx
     if glove_dict is None:
-        glove_dict, word_list = load_glove_vectors(GLOVE_FILENAME)
+        glove_dict = load_glove_vectors(GLOVE_FILENAME)
+        word_idx = read_vocabulary()
+
+
+def read_vocabulary(filename='nlp_server/vocabulary.txt'):
+    word_idx = {}
+    i = 0
+    for word in open(filename).read().splitlines():
+        word_idx[word] = i
+        i += 1
+    print("Loaded vocabulary of {} words".format(len(word_idx)))
+    return word_idx
 
 
 def load_glove_vectors(filename, scale_factor=1.0):
     word2vec = {}
-    word_list = []
     line_count = sum(1 for line in open(filename))
     sys.stdout.write("\n")
     i = 0
@@ -29,10 +39,8 @@ def load_glove_vectors(filename, scale_factor=1.0):
             print("Warning, error parsing word vector on line: {}".format(line))
             continue
         word = tokens[0]
-        word_list.append(word)
         vector = np.asarray([[float(n) for n in tokens[1:]]])[0] * scale_factor
-        index = i
-        word2vec[word] = (vector, i)
+        word2vec[word] = vector
         if i % 1000 == 0:
             sys.stdout.write("\rProcessed {} {}/{} ({:.01f} percent)    ".format(
                 filename, i, line_count, 100.0 * i / line_count))
@@ -41,28 +49,37 @@ def load_glove_vectors(filename, scale_factor=1.0):
     sys.stdout.write("\n")
 
     print("Loaded word2vec dictionary for {} words".format(len(word2vec)))
-    return word2vec, word_list
+    return word2vec
 
 
 def get_dimensionality():
     init()
-    unk, idx = glove_dict[UNKNOWN_TOKEN]
+    unk = glove_dict[UNKNOWN_TOKEN]
     return unk.shape[0]
 
 
 def vectorize(text):
     init()
-    text = preprocess(text)
     word_vectors = [glove_dict[START_TOKEN]]
-    for word in text.split():
+    for word in text_to_words(text):
         word = glove_dict.get(word, glove_dict[UNKNOWN_TOKEN])
         word_vectors.append(word)
     word_vectors.append(glove_dict[END_TOKEN])
     return word_vectors
 
 
-def preprocess(text):
-    return text.lower().replace('?', '').replace(',', ' ')
+def text_to_idx(text):
+    init()
+    return [word_idx.get(w, word_idx[UNKNOWN_TOKEN]) for w in text_to_words(text)]
+
+
+import re
+import string
+pattern = re.compile('[\W_]+')
+def text_to_words(text):
+    text = pattern.sub(' ', text).lower()
+    print text.split()
+    return text.split()
 
 
 def pad_to_length(word_vectors, desired_length):
@@ -75,7 +92,7 @@ def pad_to_length(word_vectors, desired_length):
 
 
 def onehot(indices):
-    onehot = np.zeros((len(glove_dict), len(indices)))
+    onehot = np.zeros((len(word_idx), len(indices)))
     for (i, idx) in enumerate(indices):
         onehot[idx, i] = 1.0
     return onehot

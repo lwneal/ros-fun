@@ -9,6 +9,7 @@ import word_vector
 
 app = flask.Flask(__name__)
 
+# TODO: API to get vocabulary length
 
 @app.route('/words_to_vec', methods=['GET', 'POST'])
 def words_to_vec():
@@ -18,9 +19,10 @@ def words_to_vec():
 
     # Tuple of (word_vectors, one-hot)
     vectors = word_vector.vectorize(text)
+    indices = word_vector.text_to_idx(text)
 
     fp = StringIO()
-    pickle.dump(vectors, fp)
+    pickle.dump(zip(vectors, indices), fp)
     buff = fp.getvalue()
     print("Returning word2vec output length {}".format(len(buff)))
     return flask.Response(buff, mimetype='application/octet-stream')
