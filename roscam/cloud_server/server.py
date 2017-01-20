@@ -48,7 +48,8 @@ def build_detection_visualization(frame_jpg, preds):
 if __name__ == '__main__':
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind(('0.0.0.0', 1234))
+    # Port 3389 is open over the engr network
+    s.bind(('0.0.0.0', 3389))
     s.listen(1)
 
     t = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -68,5 +69,3 @@ if __name__ == '__main__':
         print("Waiting for website viewer connection")
         conn2 = connect(t)
         handle_robot(conn, conn2)
-
-    sys.stderr.write("Connection closed\n")

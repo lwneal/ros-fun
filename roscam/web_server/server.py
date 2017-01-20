@@ -62,4 +62,5 @@ def stream_recorded():
     return flask.Response(generate(), mimetype='text/event-stream')
 
 if __name__ == '__main__':
-    app.run('0.0.0.0', 8005)
+    # Ports 5800 and 5900 are open on the ENGR network
+    app.run('0.0.0.0', 5800)
