@@ -23,14 +23,15 @@ def preprocess_input(x, dim_ordering='default'):
 
 def init():
     global model
-    start_time = time.time()
-    from resnet50 import ResNet50
-    model = ResNet50(weights='imagenet', include_top=False)
-    print("Initializing ResNet, please wait...")
-    pixels = np.zeros((480, 640, 3))
-    x = pixels_to_input(pixels)
-    preds = model.predict(x)
-    print("Resnet initialized in {:.2f} sec".format(time.time() - start_time))
+    if model is None:
+        start_time = time.time()
+        from resnet50 import ResNet50
+        model = ResNet50(weights='imagenet', include_top=False)
+        print("Initializing ResNet, please wait...")
+        pixels = np.zeros((480, 640, 3))
+        x = pixels_to_input(pixels)
+        preds = model.predict(x)
+        print("Resnet initialized in {:.2f} sec".format(time.time() - start_time))
 
 def run(pixels):
     x = pixels_to_input(pixels)

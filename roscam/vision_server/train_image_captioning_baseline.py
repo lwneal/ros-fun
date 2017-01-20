@@ -30,19 +30,25 @@ def coords(region, meta):
 def get_next_example():
     while True:
         meta, pixels = dataset_coco.random_image()
-        region = random.choice(meta['regions'])
-        input_phrase = region['phrase']
-        words = input_phrase.split()
-        text = ' '.join(words)
+        # HACK: Train on all relationship phrases, using averaged resnet preds
+        preds = resnet.run(pixels)
+        x = preds.mean(axis=0).mean(axis=0)
+        for rel in meta['relationships']:
+            #region = random.choice(meta['regions'])
+            input_phrase = '{} {} {}'.format(rel['subject']['name'], rel['predicate'], rel['object']['name'])
+            #input_phrase = region['phrase']
+            words = input_phrase.split()
+            text = ' '.join(words)
 
-        u, v = coords(region, meta)
-        x = network.extract_features(pixels, u, v)
-        y = nlp_api.words_to_onehot(text, pad_to_length=network.MAX_OUTPUT_WORDS)
-        #print("Training on word sequence: {}".format( nlp_api.onehot_to_words(y)))
-        yield x, y
+            #u, v = coords(region, meta)
+            #x = network.extract_features(pixels, u, v)
+            y = nlp_api.words_to_onehot(text, pad_to_length=network.MAX_OUTPUT_WORDS)
+            #y = nlp_api.words_to_onehot('a person is wearing a shirt', pad_to_length=network.MAX_OUTPUT_WORDS)
+            #print("Training on word sequence: {}".format( nlp_api.onehot_to_words(y)))
+            yield x, y
 
 
-def get_batch(batch_size=25):
+def get_batch(batch_size=50):
     X = []
     Y = []
     generator = get_next_example()
@@ -92,7 +98,7 @@ def train(model):
             traceback.print_exc()
     print("Training start: weights avg: {}".format(model.get_weights()[0].mean()))
     X, Y = get_batch()
-    model.fit_generator(generator(), samples_per_epoch=500, nb_epoch=1)
+    model.fit_generator(generator(), samples_per_epoch=1000, nb_epoch=1)
     print("Training end: weights mean {}".format(model.get_weights()[0].mean()))
     demonstrate(model)
 
