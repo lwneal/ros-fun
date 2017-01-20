@@ -17,6 +17,7 @@ import human_detector
 from shared import util
 from frametalk_capnp import FrameMsg
 import robot_command
+import image_caption
 
 
 def resnet_request(pixels):
@@ -31,13 +32,24 @@ def resnet_request(pixels):
 
 # Note: Also returns a robotCommand
 def detect_human_request(pixels):
-    preds = human_detector.run(pixels)
+    resnet_preds = resnet.run(pixels)
+
+    # Detect humans to point head
+    preds = human_detector.run(pixels, resnet_preds=resnet_preds)
+
+    # Generate text for TTS
+    words = image_caption.run(resnet_preds)
+    print words.replace('001', '')
+
     # Remove extra dimensions
     preds = preds.reshape(preds.shape[1:-1]) * 255
     # Round activations to 8-bit values
     preds = preds.astype(np.uint8)
+
+
     # Output Shape: (15, 20)
     robotCommand = robot_command.point_head_toward_human(preds)
+    robotCommand.descriptiveStatement = words.replace('001','')
     return preds, robotCommand
 
 
@@ -49,7 +61,7 @@ def handle_client(conn):
 
     pixels = util.decode_jpg(jpg_image)
 
-    print "Got request len {} with type {}".format(len(jpg_image), requestType)
+    #print "Got request len {} with type {}".format(len(jpg_image), requestType)
     if requestType == 'resNet50':
         # Return rounded preds as pickle
         preds = resnet_request(pixels)
@@ -58,7 +70,6 @@ def handle_client(conn):
         # Detect humans, return pickled preds
         preds, robotCommand = detect_human_request(pixels)
 
-    print("generated preds {} min {} max {}".format(preds.shape, preds.min(), preds.max()))
     outputMsg = FrameMsg.new_message()
     outputMsg.frameData = pickle.dumps(preds)
     if robotCommand:
@@ -74,6 +85,7 @@ if __name__ == '__main__':
         exit()
 
     human_detector.init(filename=sys.argv[1])
+    image_caption.init()
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
