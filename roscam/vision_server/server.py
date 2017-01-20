@@ -16,6 +16,7 @@ import resnet
 import human_detector
 from shared import util
 from frametalk_capnp import FrameMsg
+import robot_command
 
 
 def resnet_request(pixels):
@@ -28,6 +29,7 @@ def resnet_request(pixels):
     return preds
 
 
+# Note: Also returns a robotCommand
 def detect_human_request(pixels):
     preds = human_detector.run(pixels)
     # Remove extra dimensions
@@ -35,7 +37,8 @@ def detect_human_request(pixels):
     # Round activations to 8-bit values
     preds = preds.astype(np.uint8)
     # Output Shape: (15, 20)
-    return preds
+    robotCommand = robot_command.point_head_toward_human(preds)
+    return preds, robotCommand
 
 
 def handle_client(conn):
@@ -50,13 +53,17 @@ def handle_client(conn):
     if requestType == 'resNet50':
         # Return rounded preds as pickle
         preds = resnet_request(pixels)
+        robotCommand = None
     elif requestType == 'detectHuman':
         # Detect humans, return pickled preds
-        preds = detect_human_request(pixels)
+        preds, robotCommand = detect_human_request(pixels)
 
     print("generated preds {} min {} max {}".format(preds.shape, preds.min(), preds.max()))
     outputMsg = FrameMsg.new_message()
     outputMsg.frameData = pickle.dumps(preds)
+    if robotCommand:
+        print("Sending robot command: {}".format(robotCommand.to_dict()))
+        outputMsg.robotCommand = robotCommand
     util.write_packet(conn, outputMsg.to_bytes())
     print("Finished request type {} in {:.3f}s".format(requestType, time.time() - start_time))
 

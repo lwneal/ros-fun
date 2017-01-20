@@ -29,7 +29,8 @@ def vision_request(jpg_data, request_type, addr=DEFAULT_ADDR):
     responseMsg = util.read_packet(s)
     response_data = responseMsg['frameData']
     preds = pickle.loads(response_data)
-    return preds
+    command = responseMsg['robotCommand']
+    return preds, command
 
 
 def run_resnet(jpg_data):
