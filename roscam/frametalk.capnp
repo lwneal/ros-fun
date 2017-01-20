@@ -9,6 +9,7 @@ struct RobotCommand {
     headRelAzumith @0 :Float64;
     headRelAltitude @1 :Float64;
     descriptiveStatement @2 :Text;
+    score @3 :Float64;
 }
 
 struct FrameMsg {
