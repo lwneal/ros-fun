@@ -29,23 +29,26 @@ def coords(region, meta):
 
 def get_next_example():
     while True:
+        # Select a new random image each time
         meta, pixels = dataset_coco.random_image()
-        # HACK: Train on all relationship phrases, using averaged resnet preds
-        preds = resnet.run(pixels)
-        x = preds.mean(axis=0).mean(axis=0)
+
+        # TODO: Run Resnet on the resnet service, put a cache over it
+        #preds = resnet.run(pixels)
+        #x = preds.mean(axis=0).mean(axis=0)
 
         #rel = random.choice(meta['relationships'])
-        region = random.choice(meta['regions'])
         #input_phrase = u'{} {} {}'.format(rel['subject']['name'], rel['predicate'], rel['object']['name'])
+        region = random.choice(meta['regions'])
         input_phrase = region['phrase']
 
         words = input_phrase.split()
         text = ' '.join(words)
+        if not text:
+            continue
 
-        #u, v = coords(region, meta)
-        #x = network.extract_features(pixels, u, v)
+        u, v = coords(region, meta)
+        x = network.extract_features(pixels, u, v)
         y = nlp_api.words_to_onehot(text, pad_to_length=network.MAX_OUTPUT_WORDS)
-        #y = nlp_api.words_to_onehot('a person is wearing a shirt', pad_to_length=network.MAX_OUTPUT_WORDS)
         #print("Training on word sequence: {}".format( nlp_api.onehot_to_words(y)))
         yield x, y
 
