@@ -54,25 +54,43 @@ client.send_goal(g)
 
 print("Robot Control client ready...")
 
-
-last_moved_at = 0
+TALK_SECONDS = 10.0
+BORED_MOVE_SEC = 5.0
+last_excited_at = 0
+last_talked_at = 0
 def read_from_socket():
-    global last_moved_at
+    global last_excited_at
+    global last_talked_at
     try:
         while running:
-            print("Reading packet...")
             msg = util.read_packet(s)
             command = msg['robotCommand']
             dx = command['headRelAzumith']
             dy = command['headRelAltitude']
-            print("Command: move head {} {}".format(dx, dy))
-            g.target.header.frame_id = '/wide_stereo_r_stereo_camera_frame'
-            g.target.point.y = -.1 * dx
-            #g.target.point.y = .05 * dx
-            if time.time() - last_moved_at > .0:
+            if command['score'] < 0.5:
+                print("Scene with score {:.2f} is boring. This has been boring for {:.2f} sec".format( command['score'], time.time() - last_excited_at))
+                if time.time() - last_excited_at > BORED_MOVE_SEC:
+                    print("I am moving my head to a different place!")
+                    g.target.header.frame_id = '/base_link'
+                    g.target.point.y = 5 - 10.0 * random.random()
+                    g.target.point.z = 5 - 10.0 * random.random()
+                    client.send_goal(g)
+                    last_excited_at = time.time()
+            else:
+                #print("I see something score {:.2f} at coords {} {}".format(command['score'], dx, dy))
+                last_excited_at = time.time()
+                g.target.header.frame_id = '/wide_stereo_r_stereo_camera_frame'
+                g.target.point.y = -.1 * dx
+                g.target.point.z = -.1 * dy
                 client.send_goal(g)
-                last_moved_at = time.time()
-    except:
+                if time.time() - last_talked_at > TALK_SECONDS:
+                    print("Talk: {}".format(command['descriptiveStatement']))
+                    last_talked_at = time.time()
+                    # TODO: security
+                    #os.system('echo "{}" | festival --tts'.format(command['descriptiveStatement']))
+
+    except Exception as e:
+        print e
         exit()
 
 
