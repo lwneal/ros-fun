@@ -42,7 +42,8 @@ def build_model():
     model = Sequential()
     model.add(RepeatVector(MAX_OUTPUT_WORDS, input_shape=(2048,)))
     model.add(LSTM(512, name='lstm_1', return_sequences=True))
-    model.add(TimeDistributed(Dense(512, name='fc_a')))
+    model.add(LSTM(512, name='lstm_2', return_sequences=True))
+    model.add(TimeDistributed(Dense(1024, name='fc_a')))
 
     # Output: Prediction among all possible words
     model.add(TimeDistributed(Dense(VOCABULARY_SIZE, name='fc_1')))

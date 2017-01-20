@@ -74,7 +74,7 @@ def demonstrate(model):
         pass
 
     open('/tmp/example.jpg', 'w').write(util.encode_jpg(pixels))
-    #os.system('imgcat /tmp/example.jpg')
+    os.system('imgcat /tmp/example.jpg')
 
     x = spatial_context_net.extract_features(pixels, box[0]/32, box[2]/32)
     x = np.expand_dims(x, axis=0)

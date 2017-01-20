@@ -33,22 +33,24 @@ def get_next_example():
         # HACK: Train on all relationship phrases, using averaged resnet preds
         preds = resnet.run(pixels)
         x = preds.mean(axis=0).mean(axis=0)
-        for rel in meta['relationships']:
-            #region = random.choice(meta['regions'])
-            input_phrase = '{} {} {}'.format(rel['subject']['name'], rel['predicate'], rel['object']['name'])
-            #input_phrase = region['phrase']
-            words = input_phrase.split()
-            text = ' '.join(words)
 
-            #u, v = coords(region, meta)
-            #x = network.extract_features(pixels, u, v)
-            y = nlp_api.words_to_onehot(text, pad_to_length=network.MAX_OUTPUT_WORDS)
-            #y = nlp_api.words_to_onehot('a person is wearing a shirt', pad_to_length=network.MAX_OUTPUT_WORDS)
-            #print("Training on word sequence: {}".format( nlp_api.onehot_to_words(y)))
-            yield x, y
+        #rel = random.choice(meta['relationships'])
+        region = random.choice(meta['regions'])
+        #input_phrase = u'{} {} {}'.format(rel['subject']['name'], rel['predicate'], rel['object']['name'])
+        input_phrase = region['phrase']
+
+        words = input_phrase.split()
+        text = ' '.join(words)
+
+        #u, v = coords(region, meta)
+        #x = network.extract_features(pixels, u, v)
+        y = nlp_api.words_to_onehot(text, pad_to_length=network.MAX_OUTPUT_WORDS)
+        #y = nlp_api.words_to_onehot('a person is wearing a shirt', pad_to_length=network.MAX_OUTPUT_WORDS)
+        #print("Training on word sequence: {}".format( nlp_api.onehot_to_words(y)))
+        yield x, y
 
 
-def get_batch(batch_size=50):
+def get_batch(batch_size=100):
     X = []
     Y = []
     generator = get_next_example()
