@@ -8,24 +8,28 @@ UNKNOWN_TOKEN = 'stuff'
 
 glove_dict = None
 word_idx = {}
+idx_word = {}
 
 
 def init():
     global glove_dict
     global word_idx
+    global idx_word
     if glove_dict is None:
         glove_dict = load_glove_vectors(GLOVE_FILENAME)
-        word_idx = read_vocabulary()
+        word_idx, idx_word = read_vocabulary()
 
 
 def read_vocabulary(filename='nlp_server/vocabulary.txt'):
     word_idx = {}
+    idx_word = {}
     i = 0
     for word in open(filename).read().splitlines():
         word_idx[word] = i
+        idx_word[i] = word
         i += 1
     print("Loaded vocabulary of {} words".format(len(word_idx)))
-    return word_idx
+    return word_idx, idx_word
 
 
 def load_glove_vectors(filename, scale_factor=1.0):
@@ -70,7 +74,14 @@ def vectorize(text):
 
 def text_to_idx(text):
     init()
-    return [word_idx.get(w, word_idx[UNKNOWN_TOKEN]) for w in text_to_words(text)]
+    words = text_to_words(text)
+    indices = [word_idx.get(w, word_idx[UNKNOWN_TOKEN]) for w in words]
+    return indices
+
+
+def indices_to_words(indices):
+    words = [idx_word[i] for i in indices]
+    return words
 
 
 import re
@@ -78,7 +89,6 @@ import string
 pattern = re.compile('[\W_]+')
 def text_to_words(text):
     text = pattern.sub(' ', text).lower()
-    print text.split()
     return text.split()
 
 

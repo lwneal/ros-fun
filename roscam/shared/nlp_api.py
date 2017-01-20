@@ -9,6 +9,7 @@ END_TOKEN = '001'
 UNKNOWN_TOKEN = 'stuff'
 END_TOKEN_IDX = 3
 
+# Input: text, a string
 def words_to_vec(text):
     URL = 'http://localhost:8010/words_to_vec'
     r = requests.get(URL, data = {'text': text})
