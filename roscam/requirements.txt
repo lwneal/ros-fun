@@ -1,0 +1,4 @@
+flask
+pycapnp
+tensorflow-gpu
+keras
