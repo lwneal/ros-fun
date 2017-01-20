@@ -9,16 +9,25 @@ import time
 import socket
 import message_filters
 import threading
+import random
 
 import rospy
+import roslib
+roslib.load_manifest('pr2_position_scripts')
 from theora_image_transport.msg import Packet
 from sensor_msgs.msg import CompressedImage
+import actionlib
+from actionlib_msgs.msg import *
+from pr2_controllers_msgs.msg import *
+from geometry_msgs.msg import *
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared import util
 
 import capnp
 from frametalk_capnp import FrameMsg
+
+rospy.init_node('roscam_robot_control', anonymous=True)
 
 # Port 3389 is open in the engr network
 PORT = 3389
@@ -28,7 +37,27 @@ MAX_FPS = 10
 last_sent_at = 0
 running = True
 
+print("Initializing head control")
+client = actionlib.SimpleActionClient('/head_traj_controller/point_head_action', PointHeadAction)
+client.wait_for_server()
+print("Head control initialized")
+
+g = PointHeadGoal()
+g.target.point.x = 10.0
+g.target.point.y = 0
+g.target.point.z = 0
+g.min_duration = rospy.Duration(.5)
+
+# Set head to straight forward
+g.target.header.frame_id = '/base_link'
+client.send_goal(g)
+
+print("Robot Control client ready...")
+
+
+last_moved_at = 0
 def read_from_socket():
+    global last_moved_at
     try:
         while running:
             print("Reading packet...")
@@ -37,6 +66,12 @@ def read_from_socket():
             dx = command['headRelAzumith']
             dy = command['headRelAltitude']
             print("Command: move head {} {}".format(dx, dy))
+            g.target.header.frame_id = '/wide_stereo_r_stereo_camera_frame'
+            g.target.point.y = -.1 * dx
+            #g.target.point.y = .05 * dx
+            if time.time() - last_moved_at > .0:
+                client.send_goal(g)
+                last_moved_at = time.time()
     except:
         exit()
 
@@ -46,7 +81,6 @@ def main(topic, server_ip):
     s.connect((server_ip, PORT))
 
     print("Subscribing to video topic {}".format(topic))
-    rospy.init_node('roscam')
     sub_img = message_filters.Subscriber(topic, CompressedImage)
     sub_img.registerCallback(video_callback)
     print("Entering ROS spin event loop")
