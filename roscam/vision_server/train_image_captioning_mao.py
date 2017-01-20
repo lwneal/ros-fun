@@ -16,7 +16,7 @@ import dataset_coco
 import mao_net as network
 
 
-def bbox(region, width, height, meta):
+def bbox(region, meta):
     x, y = region['x'], region['y']
     width, height = region['width'], region['height']
     # Visual Genome boxes are all scaled by an arbitrary per-image factor
@@ -31,7 +31,7 @@ def get_next_example():
         meta, pixels = dataset_coco.random_image()
 
         region = random.choice(meta['regions'])
-        box = bbox(region, meta['vg_width'], meta['vg_height'], meta)
+        box = bbox(region, meta)
 
         input_phrase = region['phrase']
         words = input_phrase.split()
@@ -69,7 +69,7 @@ def draw_box(pixels, box):
 def demonstrate(model):
     meta, pixels = dataset_coco.random_image()
     region = random.choice(meta['regions'])
-    box = bbox(region)
+    box = bbox(region, meta)
     try:
         draw_box(pixels, box)
     except:
@@ -78,7 +78,7 @@ def demonstrate(model):
     open('/tmp/example.jpg', 'w').write(util.encode_jpg(pixels))
     #os.system('imgcat /tmp/example.jpg')
 
-    x = network.extract_features(pixels, box[0]/32, box[2]/32)
+    x = network.extract_features(pixels, box)
     x = np.expand_dims(x, axis=0)
     preds = model.predict(x)
     onehot_words = preds.reshape(preds.shape[1:])
