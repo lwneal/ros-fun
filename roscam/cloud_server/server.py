@@ -34,6 +34,11 @@ def handle_robot(robot_sock, subscriber_sock):
         outputMsg.timestampEpoch = timestamp
         util.write_packet(subscriber_sock, outputMsg.to_bytes())
 
+        commandMsg = FrameMsg.new_message()
+        commandMsg.robotCommand = robotCommand
+        util.write_packet(robot_sock, commandMsg.to_bytes())
+        print("Sent command to robot: {}".format(robotCommand))
+
 
 def build_detection_visualization(frame_jpg, preds):
     pixels = util.decode_jpg(frame_jpg)
