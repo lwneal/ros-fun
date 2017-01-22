@@ -37,6 +37,8 @@ def extract_features(img, bbox):
     # TODO: Or average over all vectors in the bbox?
     center_x = ((x0 + x1) / 2.0)  * (float(preds_width) / img_width)
     center_y = ((y0 + y1) / 2.0)  * (float(preds_height) / img_height)
+    center_x = np.clip(center_x, 0, preds_width-1)
+    center_y = np.clip(center_y, 0, preds_height-1)
     local_preds = resnet_preds[int(center_y), int(center_x)]
 
     # Also use global context: average over the image
