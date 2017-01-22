@@ -36,9 +36,10 @@ def load_model(filename=None):
     return model
 
 
-def run(pixels):
+def run(pixels, resnet_preds):
     import resnet
-    resnet_preds = resnet.run(pixels)
+    if resnet_preds is None:
+        resnet_preds = resnet.run(pixels)
     inputs = np.expand_dims(resnet_preds, axis=0)
     preds = model.predict(inputs)
     return preds

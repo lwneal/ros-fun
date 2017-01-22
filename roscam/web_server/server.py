@@ -53,11 +53,12 @@ def stream_recorded():
         # TODO: Session selection, for now choose a random one
         import random
         session = random.choice(block_storage.get_sessions())
-        from cloud_server.server import build_detection_visualization
         for ts, jpg_data in block_storage.read_frames(session['id']):
             time.sleep(.05)  # TODO: rate limit?
-            preds = vision_api.detect_human(jpg_data)
-            annotated_jpg = build_detection_visualization(jpg_data, preds)
+            preds, info = vision_api.detect_human(jpg_data)
+            caption = info['descriptiveStatement']
+            print caption
+            annotated_jpg = util.build_detection_visualization(jpg_data, preds, caption)
             yield 'data:image/jpeg;base64,{}\n\n'.format(b64encode(annotated_jpg))
     return flask.Response(generate(), mimetype='text/event-stream')
 
