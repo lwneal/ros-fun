@@ -56,7 +56,9 @@ def stream_recorded():
         from cloud_server.server import build_detection_visualization
         for ts, jpg_data in block_storage.read_frames(session['id']):
             time.sleep(.05)  # TODO: rate limit?
-            preds = vision_api.detect_human(jpg_data)
+            preds, info = vision_api.detect_human(jpg_data)
+            caption = info['descriptiveStatement']
+            print caption
             annotated_jpg = build_detection_visualization(jpg_data, preds)
             yield 'data:image/jpeg;base64,{}\n\n'.format(b64encode(annotated_jpg))
     return flask.Response(generate(), mimetype='text/event-stream')

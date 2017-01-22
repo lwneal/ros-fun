@@ -45,8 +45,11 @@ def build_detection_visualization(frame_jpg, preds):
 
     preds = util.rescale(preds, pixels.shape)
 
-    # Set the red channel to the output of the detector
-    pixels[:,:,0] = 0.5 * pixels[:,:,0] + 0.5 * preds
+    # Darken and set the red channel to the output of the detector
+    pixels[:,:,0] = 0.5 * pixels[:,:,0]
+    pixels[:,:,1] = 0.5 * pixels[:,:,1]
+    pixels[:,:,2] = 0.5 * pixels[:,:,2]
+    pixels[:,:,0] = pixels[:,:,0] + 0.5 * preds
     return util.encode_jpg(pixels)
 
 
