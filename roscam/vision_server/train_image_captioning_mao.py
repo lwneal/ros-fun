@@ -13,18 +13,16 @@ from shared import util
 from shared import nlp_api
 import resnet
 import dataset_coco
-import baseline_net as network
+import mao_net as network
 
 
-def bbox(region):
-    return (region['x'], region['x'] + region['width'], region['y'], region['y'] + region['height'])
-
-def coords(region, meta):
-    # Convert from VG coords to resnet output coordinates
-    resnet_scale = 1 / 32.0
-    box_scale = 1.0 * meta['width'] / meta['vg_width']
-    x0, x1, y0, y1 = [v * box_scale * resnet_scale for v in bbox(region)]
-    return int((x0+x1)/2), int((y0+y1)/2)
+def bbox(region, width, height, meta):
+    x, y = region['x'], region['y']
+    width, height = region['width'], region['height']
+    # Visual Genome boxes are all scaled by an arbitrary per-image factor
+    # We scale them here to match the original COCO images
+    s = float(meta['width']) / meta['vg_width']
+    return (x * s, (x+width) * s, y * s, (y+height) * s)
 
 
 def get_next_example():
@@ -32,22 +30,16 @@ def get_next_example():
         # Select a new random image each time
         meta, pixels = dataset_coco.random_image()
 
-        # TODO: Run Resnet on the resnet service, put a cache over it
-        #preds = resnet.run(pixels)
-        #x = preds.mean(axis=0).mean(axis=0)
-
-        #rel = random.choice(meta['relationships'])
-        #input_phrase = u'{} {} {}'.format(rel['subject']['name'], rel['predicate'], rel['object']['name'])
         region = random.choice(meta['regions'])
-        input_phrase = region['phrase']
+        box = bbox(region, meta['vg_width'], meta['vg_height'], meta)
 
+        input_phrase = region['phrase']
         words = input_phrase.split()
         text = ' '.join(words)
         if not text:
             continue
 
-        u, v = coords(region, meta)
-        x = network.extract_features(pixels, u, v)
+        x = network.extract_features(pixels, box)
         y = nlp_api.words_to_onehot(text, pad_to_length=network.MAX_OUTPUT_WORDS)
         #print("Training on word sequence: {}".format( nlp_api.onehot_to_words(y)))
         yield x, y

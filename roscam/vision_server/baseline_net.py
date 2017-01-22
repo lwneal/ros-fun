@@ -34,19 +34,23 @@ def extract_features(img, x, y, preds=None):
     # Select a single 2048-dim vector
     x = np.clip(x, 0, width-1)
     y = np.clip(y, 0, height-1)
-    return resnet_preds[y, x]
+
+    # Also use global context: average over the image
+    avg_resnet_preds = resnet_preds.mean(axis=0).mean(axis=0)
+    return np.concatenate((resnet_preds[y, x], avg_resnet_preds))
 
 
 def build_model():
     # Input: A single 2048-dim ResNet feature vector
     model = Sequential()
-    model.add(RepeatVector(MAX_OUTPUT_WORDS, input_shape=(2048,)))
+    model.add(RepeatVector(MAX_OUTPUT_WORDS, input_shape=(4096,)))
     model.add(LSTM(512, name='lstm_1', return_sequences=True))
-    model.add(TimeDistributed(Dense(512, name='fc_a')))
+    model.add(LSTM(512, name='lstm_2', return_sequences=True))
+    model.add(TimeDistributed(Dense(1024, name='fc_1')))
 
     # Output: Prediction among all possible words
-    model.add(TimeDistributed(Dense(VOCABULARY_SIZE, name='fc_1')))
+    model.add(TimeDistributed(Dense(VOCABULARY_SIZE, name='fc_2')))
     model.add(Activation('softmax', name='softmax_1'))
 
-    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=.0001)
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=.01)
     return model
