@@ -15,28 +15,24 @@ import resnet
 import dataset_grefexp
 import mao_net as network
 
-
-def bbox(region, meta):
-    x, y = region['x'], region['y']
-    width, height = region['width'], region['height']
-    # Visual Genome boxes are all scaled by an arbitrary per-image factor
-    # We scale them here to match the original COCO images
-    s = float(meta['width']) / meta['vg_width']
-    return (x * s, (x+width) * s, y * s, (y+height) * s)
+def get_random_grefexp(reference_key=None):
+    grefexp, anno, img_meta, pixels = dataset_grefexp.random_annotation()
+    x0, width, y0, height = anno['bbox']
+    box = (x0, x0 + width, y0, y0 + height)
+    text = random.choice(grefexp['refexps'])['raw']
+    return pixels, box, text
 
 
 def get_next_example():
     while True:
-        grefexp, anno, img_meta, pixels = dataset_grefexp.random_annotation()
-
-        x0, width, y0, height = anno['bbox']
-        box = (x0, x0 + width, y0, y0 + height)
-        text = random.choice(grefexp['refexps'])['raw']
-
-        x = network.extract_features(pixels, box)
-        y = nlp_api.words_to_onehot(text, pad_to_length=network.MAX_OUTPUT_WORDS)
-        print("Training on word sequence: {}".format( nlp_api.onehot_to_words(y)))
-        yield x, y
+        try:
+            pixels, box, text = get_random_grefexp()
+            x = network.extract_features(pixels, box)
+            y = nlp_api.words_to_onehot(text, pad_to_length=network.MAX_OUTPUT_WORDS)
+            #print("Training on word sequence: {}".format(nlp_api.onehot_to_words(y)))
+            yield x, y
+        except Exception as e:
+            print("Failed with error: {}".format(e))
 
 
 def get_batch(batch_size=100):
@@ -61,15 +57,12 @@ def draw_box(pixels, box):
 
 
 def demonstrate(model):
-    meta, pixels = dataset_coco.random_image()
-    height, width, _ = pixels.shape
-    box = (0, width, 0, height)
-    try:
-        draw_box(pixels, box)
-    except:
-        pass
+    pixels, box, text = get_random_grefexp()
 
-    open('/tmp/example.jpg', 'w').write(util.encode_jpg(pixels))
+    # TODO: draw pixels to screen?
+    #draw_box(pixels, box)
+    #jpg_data = util.encode_jpg(pixels)
+    #open('/tmp/example.jpg', 'w').write(jpg_data)
     #os.system('imgcat /tmp/example.jpg')
 
     x = network.extract_features(pixels, box)
@@ -88,7 +81,7 @@ def train(model):
             import traceback
             traceback.print_exc()
     print("Training start: weights avg: {}".format(model.get_weights()[0].mean()))
-    model.fit_generator(generator(), samples_per_epoch=1000, nb_epoch=1)
+    model.fit_generator(generator(), samples_per_epoch=100, nb_epoch=1)
     print("Training end: weights mean {}".format(model.get_weights()[0].mean()))
     demonstrate(model)
 
