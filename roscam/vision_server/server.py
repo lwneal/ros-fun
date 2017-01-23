@@ -37,15 +37,17 @@ def detect_human_request(pixels):
     # Detect humans to point head
     preds = human_detector.run(pixels, resnet_preds=resnet_preds)
 
-    # Generate text for TTS
-    words = image_caption.run(resnet_preds)
-    print words.replace('001', '')
-
     # Remove extra dimensions
     preds = preds.reshape(preds.shape[1:-1]) * 255
     # Round activations to 8-bit values
     preds = preds.astype(np.uint8)
 
+    # Generate text for TTS
+    # TODO: Which bounding box should be used?
+    img_height, img_width, channels = pixels.shape
+    bbox = (0, img_width, 0, img_height)
+    words = image_caption.run(resnet_preds, img_height, img_width, bbox)
+    print words.replace('001', '')
 
     # Output Shape: (15, 20)
     robotCommand = robot_command.point_head_toward_human(preds)
@@ -73,19 +75,19 @@ def handle_client(conn):
     outputMsg = FrameMsg.new_message()
     outputMsg.frameData = pickle.dumps(preds)
     if robotCommand:
-        print("Sending robot command: {}".format(robotCommand.to_dict()))
+        #print("Sending robot command: {}".format(robotCommand.to_dict()))
         outputMsg.robotCommand = robotCommand
     util.write_packet(conn, outputMsg.to_bytes())
     print("Finished request type {} in {:.3f}s".format(requestType, time.time() - start_time))
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Usage: server.py human_detector_model.h5")
+    if len(sys.argv) < 3:
+        print("Usage: server.py saliency_model.h5 image_caption_model.h5")
         exit()
 
     human_detector.init(filename=sys.argv[1])
-    image_caption.init()
+    image_caption.init(filename=sys.argv[2])
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

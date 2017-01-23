@@ -27,14 +27,17 @@ VOCABULARY_SIZE = 28519  # TODO: Get this from the NLP server
 
 def extract_features(img, bbox):
     img_height, img_width, channels = img.shape
-    x0, x1, y0, y1 = bbox
-
     resnet_preds = resnet.run(img)
+    return extract_features_from_preds(preds, img_height, img_width, bbox)
+
+
+def extract_features_from_preds(resnet_preds, img_height, img_width, bbox):
     preds_height, preds_width, preds_depth = resnet_preds.shape
     assert preds_depth == 2048
 
     # Select a single 2048-dim vector from the center of the bbox
     # TODO: Or average over all vectors in the bbox?
+    x0, x1, y0, y1 = bbox
     center_x = ((x0 + x1) / 2.0)  * (float(preds_width) / img_width)
     center_y = ((y0 + y1) / 2.0)  * (float(preds_height) / img_height)
     local_preds = resnet_preds[int(center_y), int(center_x)]
