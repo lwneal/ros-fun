@@ -18,8 +18,6 @@ def get_example():
     meta, pixels = dataset_coco.random_image()
     mask = dataset_coco.human_detection_mask(meta)
 
-    jpg_data = open(meta['filename']).read()
-    pixels = util.decode_jpg(jpg_data)
     x = resnet.run(pixels)
     y = util.rescale(mask, x.shape)
 
