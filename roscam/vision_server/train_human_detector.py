@@ -42,7 +42,7 @@ def get_batch(batch_size=32):
     return X, Y
 
 
-def train(model, batch_count=100):
+def train(model, output_filename, batch_count=100):
     def generator():
         try:
             while True:
@@ -53,6 +53,7 @@ def train(model, batch_count=100):
     print("Training start: weights avg: {}".format(model.get_weights()[0].mean()))
     model.fit_generator(generator(), samples_per_epoch=32 * 4, nb_epoch=batch_count)
     print("Training end: weights mean {}".format(model.get_weights()[0].mean()))
+    model.save(output_filename)
 
 
 if __name__ == '__main__':
@@ -67,5 +68,3 @@ if __name__ == '__main__':
         train(human_detector.model)
     except KeyboardInterrupt:
         print("Stopping due to keyboard interrupt")
-
-    model.save(output_filename)

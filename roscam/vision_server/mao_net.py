@@ -28,7 +28,7 @@ VOCABULARY_SIZE = 28519  # TODO: Get this from the NLP server
 def extract_features(img, bbox):
     img_height, img_width, channels = img.shape
     resnet_preds = resnet.run(img)
-    return extract_features_from_preds(preds, img_height, img_width, bbox)
+    return extract_features_from_preds(resnet_preds, img_height, img_width, bbox)
 
 
 def extract_features_from_preds(resnet_preds, img_height, img_width, bbox):

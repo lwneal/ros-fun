@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared import util
 from shared import nlp_api
 import resnet
-import dataset_coco
+import dataset_grefexp
 import mao_net as network
 
 
@@ -27,21 +27,15 @@ def bbox(region, meta):
 
 def get_next_example():
     while True:
-        # Select a new random image each time
-        meta, pixels = dataset_coco.random_image()
+        grefexp, anno, img_meta, pixels = dataset_grefexp.random_annotation()
 
-        region = random.choice(meta['regions'])
-        box = bbox(region, meta)
-
-        input_phrase = region['phrase']
-        words = input_phrase.split()
-        text = ' '.join(words)
-        if not text:
-            continue
+        x0, width, y0, height = anno['bbox']
+        box = (x0, x0 + width, y0, y0 + height)
+        text = random.choice(grefexp['refexps'])['raw']
 
         x = network.extract_features(pixels, box)
         y = nlp_api.words_to_onehot(text, pad_to_length=network.MAX_OUTPUT_WORDS)
-        #print("Training on word sequence: {}".format( nlp_api.onehot_to_words(y)))
+        print("Training on word sequence: {}".format( nlp_api.onehot_to_words(y)))
         yield x, y
 
 
@@ -68,8 +62,8 @@ def draw_box(pixels, box):
 
 def demonstrate(model):
     meta, pixels = dataset_coco.random_image()
-    region = random.choice(meta['regions'])
-    box = bbox(region, meta)
+    height, width, _ = pixels.shape
+    box = (0, width, 0, height)
     try:
         draw_box(pixels, box)
     except:
@@ -94,7 +88,6 @@ def train(model):
             import traceback
             traceback.print_exc()
     print("Training start: weights avg: {}".format(model.get_weights()[0].mean()))
-    X, Y = get_batch()
     model.fit_generator(generator(), samples_per_epoch=1000, nb_epoch=1)
     print("Training end: weights mean {}".format(model.get_weights()[0].mean()))
     demonstrate(model)
