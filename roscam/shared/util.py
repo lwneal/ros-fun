@@ -7,6 +7,9 @@ import capnp
 from frametalk_capnp import FrameMsg
 
 
+FONT_FILENAME = "/home/nealla/ros-fun/sans-serif.ttf"
+
+
 def read_packet(conn):
     packet_type_bytes = conn.recv(1)
     assert packet_type_bytes == '\x01'
@@ -42,3 +45,33 @@ def rescale(image, shape):
     from scipy.misc import imresize
     return imresize(image, shape).astype(float)
 
+
+def build_detection_visualization(frame_jpg, preds, caption=None):
+    pixels = decode_jpg(frame_jpg)
+
+    preds = rescale(preds, pixels.shape)
+
+    # Darken and set the red channel to the output of the detector
+    pixels[:,:,0] = 0.5 * pixels[:,:,0]
+    pixels[:,:,1] = 0.5 * pixels[:,:,1]
+    pixels[:,:,2] = 0.5 * pixels[:,:,2]
+    pixels[:,:,0] = pixels[:,:,0] + 0.5 * preds
+
+    if caption:
+        pixels = draw_text(pixels, caption)
+
+    return encode_jpg(pixels)
+
+
+def draw_text(image_array, text):
+    from PIL import Image
+    from PIL import ImageFont
+    from PIL import ImageDraw
+    image_array = image_array.astype(np.uint8)
+    img = Image.fromarray(image_array).convert('RGB')
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.truetype(FONT_FILENAME, 16)
+    #draw.rectangle((0, 0, img.width, 16), fill=(0,0,0,128))
+    draw.rectangle((0, 0, img.width, 16), fill=(0,0,0,0))
+    draw.text((0, 0), text, (255,255,255), font=font)
+    return np.array(img)
