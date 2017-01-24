@@ -83,7 +83,7 @@ def train(model):
             import traceback
             traceback.print_exc()
     print("Training start: weights avg: {}".format(model.get_weights()[0].mean()))
-    model.fit_generator(generator(), samples_per_epoch=100, nb_epoch=1)
+    model.fit_generator(generator(), samples_per_epoch=1000, nb_epoch=1)
     print("Training end: weights mean {}".format(model.get_weights()[0].mean()))
     demonstrate(model)
 
