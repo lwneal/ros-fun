@@ -5,3 +5,5 @@ keras
 redis
 numpy
 scipy
+pycapnp
+requests
