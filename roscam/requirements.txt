@@ -2,3 +2,6 @@ flask
 pycapnp
 tensorflow-gpu
 keras
+redis
+numpy
+scipy

@@ -42,7 +42,7 @@ wget -N "http://visualgenome.org/static/data/dataset/qa_to_region_mapping.json.z
 echo "Finished downloading Visual Genome"
 
 echo "Unzipping all files"
-mkdir coco
+mkdir -p coco
 unzip -d coco train2014.zip
 unzip -d coco val2014.zip
 unzip -d coco test2014.zip
