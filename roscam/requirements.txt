@@ -7,3 +7,4 @@ numpy
 scipy
 pycapnp
 requests
+scikit-image
