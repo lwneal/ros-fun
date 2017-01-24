@@ -15,8 +15,8 @@ import resnet
 import dataset_grefexp
 import mao_net as network
 
-def get_random_grefexp(reference_key=None):
-    grefexp, anno, img_meta, pixels = dataset_grefexp.random_annotation()
+def get_random_grefexp(reference_key=dataset_grefexp.KEY_GREFEXP_TRAIN):
+    grefexp, anno, img_meta, pixels = dataset_grefexp.random_annotation(reference_key)
     x0, width, y0, height = anno['bbox']
     box = (x0, x0 + width, y0, y0 + height)
     text = random.choice(grefexp['refexps'])['raw']
@@ -57,7 +57,7 @@ def draw_box(pixels, box):
 
 
 def demonstrate(model):
-    pixels, box, text = get_random_grefexp()
+    pixels, box, text = get_random_grefexp(reference_key=dataset_grefexp.KEY_GREFEXP_VAL)
 
     # TODO: draw pixels to screen?
     #draw_box(pixels, box)
@@ -69,6 +69,8 @@ def demonstrate(model):
     x = np.expand_dims(x, axis=0)
     preds = model.predict(x)
     onehot_words = preds.reshape(preds.shape[1:])
+    print("Demonstration image {}x{}".format(pixels.shape[1], pixels.shape[0]))
+    print('Correct Answer: {}'.format(text))
     print('Prediction: {}'.format(nlp_api.onehot_to_words(onehot_words)))
 
 
