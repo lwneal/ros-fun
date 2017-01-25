@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared import util
 from shared import nlp_api
 import resnet
-import dataset_grefexp
+from datasets import dataset_grefexp
 from interfaces import image_caption
 from networks import mao_net
 

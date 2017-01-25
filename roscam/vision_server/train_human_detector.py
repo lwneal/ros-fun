@@ -10,8 +10,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from shared import util
 import resnet
-import image_salience
-import dataset_coco
+from interfaces import image_salience
+from datsets import dataset_coco
 from networks import conv_detector_net
 
 
