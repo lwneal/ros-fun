@@ -23,3 +23,26 @@ On the robot:
 Where `10.1.2.3` is the IP of the cloud server.
 
 Then navigate to http://10.1.2.3:8005 and you should see a video stream in your browser.
+
+Development Notes:
+
+frametalk_capnp - Automatically generated from frametalk.capnp, used for streaming messages over TCP. Any module may import frametalk_capnp, it is shared among all servers.
+
+clients - Stand-alone programs that make a Frametalk connection to cloud_server and upload video (eg. from a robot).
+
+shared - Shared utilities and HTTP API wrappers for the services. All modules may import from shared.
+
+datasets - COCO and related datasets for object detection, captioning, etc etc. Files in this module may only depend on shared/
+
+interfaces - Each Interface describes the input and output tensor shape for a particular problem. For example, networks based on image_caption require a 4101-dim input and output 16 one-hot word vectors. Interfaces may depend on datasets/ and shared/.
+
+networks - Definitions for the neural networks. Multiple networks might implement an interface. Modules in networks/ may depend on interfaces/, datasets/, and shared/.
+
+servers - Each one is a microservice, accessible through wrapper functions in shared/*api.
+    cloud_server - Accepts incoming Frametalk connections. Saves their video to block_storage. Relays video to the vision_server and to live viewers.
+    web_server - Web UI used for viewing live or stored video.
+    vision_server - Microservice that runs computer vision algorithms. Requires GPU access.
+    nlp_server - Microservice that translates between text and word vectors.
+
+scripts - Scripts meant for one-time setup or maintenance. Used for downloading and parsing data required by datsets/, etc.
+
