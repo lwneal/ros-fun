@@ -13,7 +13,8 @@ from shared import util
 from shared import nlp_api
 import resnet
 import dataset_grefexp
-import mao_net as network
+import image_caption
+import mao_net
 
 def get_random_grefexp(reference_key=dataset_grefexp.KEY_GREFEXP_TRAIN):
     grefexp, anno, img_meta, pixels = dataset_grefexp.random_annotation(reference_key)
@@ -27,8 +28,8 @@ def get_next_example():
     while True:
         try:
             pixels, box, text = get_random_grefexp()
-            x = network.extract_features(pixels, box)
-            y = nlp_api.words_to_onehot(text, pad_to_length=network.MAX_OUTPUT_WORDS)
+            x = image_caption.extract_features(pixels, box)
+            y = nlp_api.words_to_onehot(text, pad_to_length=image_caption.MAX_OUTPUT_WORDS)
             #print("Training on word sequence: {}".format(nlp_api.onehot_to_words(y)))
             yield x, y
         except Exception as e:
@@ -65,7 +66,7 @@ def demonstrate(model):
     #open('/tmp/example.jpg', 'w').write(jpg_data)
     #os.system('imgcat /tmp/example.jpg')
 
-    x = network.extract_features(pixels, box)
+    x = image_caption.extract_features(pixels, box)
     x = np.expand_dims(x, axis=0)
     preds = model.predict(x)
     onehot_words = preds.reshape(preds.shape[1:])
@@ -96,7 +97,7 @@ if __name__ == '__main__':
         from keras.models import load_model
         model = load_model(input_filename)
     else:
-        model = network.build_model()
+        model = mao_net.build_model()
 
     try:
         while True:

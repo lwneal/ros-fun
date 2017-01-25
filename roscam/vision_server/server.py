@@ -30,7 +30,8 @@ def resnet_request(pixels):
     return preds
 
 
-# Note: Also returns a robotCommand
+# TODO: Rename and generalize: this is the request that runs for each
+#   frame in a live feed from the robot (or from storage)
 def detect_human_request(pixels):
     resnet_preds = resnet.run(pixels)
 
