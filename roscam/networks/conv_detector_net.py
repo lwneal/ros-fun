@@ -7,7 +7,7 @@ import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-def build_network(filename=None):
+def build_model(filename=None):
     from keras.models import Sequential
     from keras.layers import Convolution2D, ZeroPadding2D
     model = Sequential()

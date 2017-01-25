@@ -34,6 +34,7 @@ def init():
         print("Resnet initialized in {:.2f} sec".format(time.time() - start_time))
 
 def run(pixels):
+    init()
     x = pixels_to_input(pixels)
     preds = model.predict(x)
     # (1, 20, 15, 2048) --> (20, 15, 2048)

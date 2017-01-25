@@ -12,7 +12,7 @@ from shared import util
 import resnet
 import image_salience
 import dataset_coco
-import conv_detector_net
+from networks import conv_detector_net
 
 
 def get_example():
@@ -66,7 +66,8 @@ if __name__ == '__main__':
     else:
         model = conv_detector_net.build_model()
 
+    resnet.init()
     try:
-        train(model)
+        train(model, output_filename)
     except KeyboardInterrupt:
         print("Stopping due to keyboard interrupt")
