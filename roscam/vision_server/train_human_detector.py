@@ -10,7 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from shared import util
 import resnet
-import human_detector
+import image_salience
 import dataset_coco
 
 
@@ -62,9 +62,9 @@ if __name__ == '__main__':
     if len(sys.argv) > 2:
         input_filename = sys.argv[2]
 
-    human_detector.init(filename=input_filename)
+    image_salience.init(filename=input_filename)
 
     try:
-        train(human_detector.model)
+        train(image_salience.model)
     except KeyboardInterrupt:
         print("Stopping due to keyboard interrupt")

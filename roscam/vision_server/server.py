@@ -13,11 +13,11 @@ import capnp
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import resnet
-import human_detector
 from shared import util
 from frametalk_capnp import FrameMsg
 import robot_command
 import image_caption
+import image_salience
 
 
 def resnet_request(pixels):
@@ -35,8 +35,9 @@ def resnet_request(pixels):
 def detect_human_request(pixels):
     resnet_preds = resnet.run(pixels)
 
-    # Detect humans to point head
-    preds = human_detector.run(pixels, resnet_preds=resnet_preds)
+    # Detect salient areas 
+    # NOTE: Saliency can be human detection, foreground detection, or whatever else
+    preds = image_salience.run(pixels, resnet_preds=resnet_preds)
 
     # Remove extra dimensions
     preds = preds.reshape(preds.shape[1:-1]) * 255
@@ -87,7 +88,7 @@ if __name__ == '__main__':
         print("Usage: server.py saliency_model.h5 image_caption_model.h5")
         exit()
 
-    human_detector.init(filename=sys.argv[1])
+    image_salience.init(filename=sys.argv[1])
     image_caption.init(filename=sys.argv[2])
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
