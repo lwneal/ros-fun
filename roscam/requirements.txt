@@ -8,3 +8,4 @@ scipy
 pycapnp
 requests
 scikit-image
+nltk
