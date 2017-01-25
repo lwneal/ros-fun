@@ -18,10 +18,6 @@ def init(filename):
 
 
 def run(pixels, resnet_preds):
-    import resnet
-    if resnet_preds is None:
-        resnet.init()
-        resnet_preds = resnet.run(pixels)
     inputs = np.expand_dims(resnet_preds, axis=0)
     preds = model.predict(inputs)
     return preds

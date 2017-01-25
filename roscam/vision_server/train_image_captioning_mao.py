@@ -13,8 +13,9 @@ from shared import util
 from shared import nlp_api
 import resnet
 import dataset_grefexp
-import image_caption
+from interfaces import image_caption
 from networks import mao_net
+
 
 def get_random_grefexp(reference_key=dataset_grefexp.KEY_GREFEXP_TRAIN):
     grefexp, anno, img_meta, pixels = dataset_grefexp.random_annotation(reference_key)

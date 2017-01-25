@@ -16,8 +16,8 @@ import resnet
 from shared import util
 from frametalk_capnp import FrameMsg
 import robot_command
-import image_caption
-import image_salience
+from interfaces import image_caption
+from interfaces import image_salience
 
 
 def resnet_request(pixels):

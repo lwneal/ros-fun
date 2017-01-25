@@ -8,7 +8,7 @@ from keras.models import load_model
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import resnet
+from vision_server import resnet
 from shared import nlp_api
 from shared import util
 

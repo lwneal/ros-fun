@@ -4,7 +4,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from shared import util
-from image_caption import MAX_OUTPUT_WORDS, VOCABULARY_SIZE
+from interfaces.image_caption import MAX_OUTPUT_WORDS, VOCABULARY_SIZE
 
 
 def build_model():
