@@ -39,21 +39,28 @@ def get_validation_set():
 
 
 def evaluate(model):
-    bleu_scores = []
-    bleu_score_sum = 0
+    bleu_count = 0
+    bleu1_sum = 0
+    bleu2_sum = 0
     for x, correct_text in get_validation_set():
         preds = model.predict(x)
         output_words = nlp_api.onehot_to_words(preds.reshape(preds.shape[1:]))
-        score = bleu(output_words, correct_text)
-        bleu_scores.append(score)
-        bleu_score_sum += score
-        print("Examples:\t{}\tAvg BLEU-2 score:\t{:.3f}".format(len(bleu_scores), bleu_score_sum / len(bleu_scores)))
+        output_words = output_words.replace('001', '')  # Remove end token
+        bleu1_sum += bleu(output_words, correct_text, n=1)
+        bleu2_sum += bleu(output_words, correct_text, n=2)
+        bleu_count += 1
+        print("Examples:\t{}\tAvg BLEU-1 score:\t{:.3f}\tBLEU-2:\t{:.3f}".format(
+            bleu_count, bleu1_sum / bleu_count, bleu2_sum / bleu_count))
 
 
-def bleu(hypothesis, reference):
+def bleu(hypothesis, reference, n):
     truth = [reference.lower().split()]
     attempt = hypothesis.lower().split()
-    return nltk.translate.bleu_score.sentence_bleu(truth, attempt, weights = (0.5, 0.5))
+    if n == 1:
+        weights = (1.0,)
+    elif n == 2:
+        weights = (.5, .5)
+    return nltk.translate.bleu_score.sentence_bleu(truth, attempt, weights)
 
 
 if __name__ == '__main__':
