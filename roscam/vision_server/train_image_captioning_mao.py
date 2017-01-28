@@ -101,7 +101,7 @@ if __name__ == '__main__':
     else:
         model = mao_net.build_model()
 
-    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=.001)
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=.01)
     resnet.init()
     try:
         while True:
