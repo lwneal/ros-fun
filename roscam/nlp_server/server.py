@@ -38,4 +38,4 @@ def indices_to_words():
 
 if __name__ == '__main__':
     word_vector.init()
-    app.run(port=8010)
+    app.run('0.0.0.0', port=8010)
