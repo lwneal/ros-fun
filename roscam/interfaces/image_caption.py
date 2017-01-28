@@ -10,6 +10,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from vision_server import resnet
 from shared import nlp_api
+from shared import vision_api
 from shared import util
 
 MAX_OUTPUT_WORDS = 12
@@ -74,8 +75,8 @@ def extract_features_from_preds(resnet_preds, img_height, img_width, bbox):
     return np.concatenate((local_preds, avg_resnet_preds, context_vector))
 
 
-def extract_features(img, bbox):
-    img_height, img_width, channels = img.shape
-    resnet_preds = resnet.run(img)
+def extract_features(jpg_data, img_width, img_height, bbox):
+    #img_height, img_width, channels = img.shape
+    resnet_preds = vision_api.run_resnet(jpg_data)
     return extract_features_from_preds(resnet_preds, img_height, img_width, bbox)
 

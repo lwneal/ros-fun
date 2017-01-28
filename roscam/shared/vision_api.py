@@ -27,15 +27,18 @@ def vision_request(jpg_data, request_type, addr=DEFAULT_ADDR):
     util.write_packet(s, requestMsg.to_bytes())
 
     responseMsg = util.read_packet(s)
-    response_data = responseMsg['frameData']
-    preds = pickle.loads(response_data)
-    command = responseMsg['robotCommand']
-    return preds, command
+    return responseMsg
 
 
 def run_resnet(jpg_data):
-    return vision_request(jpg_data, request_type=VisionRequestType.resNet50)
+    responseMsg = vision_request(jpg_data, request_type=VisionRequestType.resNet50)
+    preds = pickle.loads(responseMsg['frameData'])
+    return preds
 
 
 def detect_human(jpg_data):
-    return vision_request(jpg_data, request_type=VisionRequestType.detectHuman)
+    responseMsg = vision_request(jpg_data, request_type=VisionRequestType.detectHuman)
+    preds = pickle.loads(responseMsg['frameData'])
+    command = responseMsg['robotCommand']
+    return preds, command
+

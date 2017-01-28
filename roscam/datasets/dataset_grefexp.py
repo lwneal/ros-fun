@@ -36,5 +36,4 @@ def get_annotation_for_key(key):
     img_meta = json.loads(conn.get(img_key))
 
     jpg_data = open(os.path.join(DATA_DIR, img_meta['filename'])).read()
-    pixels = util.decode_jpg(jpg_data)
-    return grefexp, anno, img_meta, pixels
+    return grefexp, anno, img_meta, jpg_data

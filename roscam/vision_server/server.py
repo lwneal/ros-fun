@@ -22,11 +22,6 @@ from interfaces import image_salience
 
 def resnet_request(pixels):
     preds = resnet.run(pixels)
-    # Remove extra dimension
-    preds = preds.reshape(preds.shape[1:])
-    # Round activations to 8-bit values
-    preds = preds.astype(np.uint8)
-    # Output Shape: (15, 20, 2048)
     return preds
 
 
@@ -41,6 +36,7 @@ def detect_human_request(pixels):
 
     # Remove extra dimensions
     preds = preds.reshape(preds.shape[1:-1]) * 255
+
     # Round activations to 8-bit values
     preds = preds.astype(np.uint8)
 

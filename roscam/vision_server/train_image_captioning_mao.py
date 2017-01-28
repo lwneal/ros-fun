@@ -18,17 +18,17 @@ from networks import mao_net
 
 
 def get_random_grefexp(reference_key=dataset_grefexp.KEY_GREFEXP_TRAIN):
-    grefexp, anno, img_meta, pixels = dataset_grefexp.random_annotation(reference_key)
+    grefexp, anno, img_meta, jpg_data = dataset_grefexp.random_annotation(reference_key)
     x0, width, y0, height = anno['bbox']
     box = (x0, x0 + width, y0, y0 + height)
     text = random.choice(grefexp['refexps'])['raw']
-    return pixels, box, text
+    return jpg_data, box, text
 
 
 def get_next_example():
     while True:
-        pixels, box, text = get_random_grefexp()
-        x = image_caption.extract_features(pixels, box)
+        jpg_data, box, text = get_random_grefexp()
+        x = image_caption.extract_features(jpg_data, box)
         y = nlp_api.words_to_onehot(text, pad_to_length=image_caption.MAX_OUTPUT_WORDS)
         #print("Training on word sequence: {}".format(nlp_api.onehot_to_words(y)))
         yield x, y
