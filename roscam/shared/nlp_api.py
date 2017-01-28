@@ -9,7 +9,7 @@ END_TOKEN = '001'
 UNKNOWN_TOKEN = 'stuff'
 END_TOKEN_IDX = 3
 
-HOSTNAME = 'grapefruit.deeplearninggroup.com'
+HOSTNAME = 'localhost'
 
 # Input: text, a string
 def words_to_vec(text):

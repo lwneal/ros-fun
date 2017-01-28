@@ -1,13 +1,15 @@
 #!/usr/bin/env python
+import re
 import random
 import os
 import sys
 import math
+import time
 
 from keras.models import load_model
 import numpy as np
 from PIL import Image
-import nltk
+import bleu_scorer
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -45,17 +47,18 @@ def evaluate(model):
     bleu1_sum = 0
     bleu2_sum = 0
     bleu4_sum = 0
-    import time
     now = time.time()
     runtimes = []
     for x, correct_texts in get_validation_set():
         preds = model.predict(x)
         output_words = nlp_api.onehot_to_words(preds.reshape(preds.shape[1:]))
         output_words = output_words.replace('001', '')  # Remove end token
-        bleu1_sum += bleu(output_words, correct_texts, n=1)
-        bleu2_sum += bleu(output_words, correct_texts, n=2)
-        bleu4_sum += bleu(output_words, correct_texts, n=4)
+
+        scores = bleu(output_words, correct_texts)
         bleu_count += 1
+        bleu1_sum += scores[0]
+        bleu2_sum += scores[1]
+        bleu4_sum += scores[3]
         print("Examples:\t{}\tAvg BLEU-1 score:\t{:.3f}\tBLEU-2:\t{:.3f}\tBLEU-4:{:.3f}".format(
             bleu_count, bleu1_sum / bleu_count, bleu2_sum / bleu_count,
             bleu4_sum / bleu_count))
@@ -63,18 +66,14 @@ def evaluate(model):
         print("Average runtime {:.3f}".format(sum(runtimes) / len(runtimes)))
         now = time.time()
 
+def strip_nonalnum(text):
+    return re.sub(r'\W+', ' ', text.lower()).strip()
 
-def bleu(candidate, references, n):
-    ground_truths = [r.lower().split() for r in references]
-    generated = candidate.lower().split()
-    if n == 1:
-        weights = (1.0,)
-    elif n == 2:
-        weights = (.5, .5)
-    elif n == 4:
-        weights = (.25, .25, .25, .25)
-    return nltk.translate.bleu_score.sentence_bleu(ground_truths, generated, weights)
-
+def bleu(output_words, correct_texts):
+    output_words = strip_nonalnum(output_words)
+    correct_texts = [strip_nonalnum(r) for r in correct_texts]
+    scores, _ = bleu_scorer.BleuScorer(output_words, correct_texts).compute_score()
+    return scores
 
 if __name__ == '__main__':
     input_filename = sys.argv[1]
