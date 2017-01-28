@@ -23,44 +23,50 @@ def get_grefexp(key):
     grefexp, anno, img_meta, pixels = dataset_grefexp.get_annotation_for_key(key)
     x0, width, y0, height = anno['bbox']
     box = (x0, x0 + width, y0, y0 + height)
-    text = random.choice(grefexp['refexps'])['raw']
-    return pixels, box, text
+    texts = [refexp['raw'] for refexp in grefexp['refexps']]
+    return pixels, box, texts
 
 
 def get_validation_set():
     keys = dataset_grefexp.get_all_keys()
     print("Loaded {} validation examples".format(len(keys)))
     for key in keys:
-        pixels, box, text = get_grefexp(key)
+        pixels, box, texts = get_grefexp(key)
         x = image_caption.extract_features(pixels, box)
         x = np.expand_dims(x, axis=0)
         #print("Training on word sequence: {}".format(nlp_api.onehot_to_words(y)))
-        yield x, text
+        yield x, texts
 
 
 def evaluate(model):
     bleu_count = 0
     bleu1_sum = 0
     bleu2_sum = 0
-    for x, correct_text in get_validation_set():
+    bleu4_sum = 0
+    for x, correct_texts in get_validation_set():
         preds = model.predict(x)
         output_words = nlp_api.onehot_to_words(preds.reshape(preds.shape[1:]))
         output_words = output_words.replace('001', '')  # Remove end token
-        bleu1_sum += bleu(output_words, correct_text, n=1)
-        bleu2_sum += bleu(output_words, correct_text, n=2)
+        bleu1_sum += bleu(output_words, correct_texts, n=1)
+        bleu2_sum += bleu(output_words, correct_texts, n=2)
+        bleu4_sum += bleu(output_words, correct_texts, n=4)
         bleu_count += 1
-        print("Examples:\t{}\tAvg BLEU-1 score:\t{:.3f}\tBLEU-2:\t{:.3f}".format(
-            bleu_count, bleu1_sum / bleu_count, bleu2_sum / bleu_count))
+        import pdb; pdb.set_trace()
+        print("Examples:\t{}\tAvg BLEU-1 score:\t{:.3f}\tBLEU-2:\t{:.3f}\tBLEU-4:{:.3f}".format(
+            bleu_count, bleu1_sum / bleu_count, bleu2_sum / bleu_count,
+            bleu4_sum / bleu_count))
 
 
-def bleu(hypothesis, reference, n):
-    truth = [reference.lower().split()]
-    attempt = hypothesis.lower().split()
+def bleu(candidate, references, n):
+    ground_truths = [r.lower().split() for r in references]
+    generated = candidate.lower().split()
     if n == 1:
         weights = (1.0,)
     elif n == 2:
         weights = (.5, .5)
-    return nltk.translate.bleu_score.sentence_bleu(truth, attempt, weights)
+    elif n == 4:
+        weights = (.25, .25, .25, .25)
+    return nltk.translate.bleu_score.sentence_bleu(ground_truths, generated, weights)
 
 
 if __name__ == '__main__':
