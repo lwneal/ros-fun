@@ -38,33 +38,28 @@ def get_validation_set():
         resnet_preds = resnet.run(pixels)
         x = image_caption.extract_features_from_preds(resnet_preds, width, height, box)
         x = np.expand_dims(x, axis=0)
-        #print("Training on word sequence: {}".format(nlp_api.onehot_to_words(y)))
         yield x, texts
 
 
 def evaluate(model):
-    bleu_count = 0
-    bleu1_sum = 0
-    bleu2_sum = 0
-    bleu4_sum = 0
-    now = time.time()
-    runtimes = []
+
+    bleu = bleu_scorer.BleuScorer(n=4)
+
     for x, correct_texts in get_validation_set():
         preds = model.predict(x)
         output_words = nlp_api.onehot_to_words(preds.reshape(preds.shape[1:]))
         output_words = output_words.replace('001', '')  # Remove end token
 
-        scores = bleu(output_words, correct_texts)
-        bleu_count += 1
-        bleu1_sum += scores[0]
-        bleu2_sum += scores[1]
-        bleu4_sum += scores[3]
+        bleu += (output_words, correct_texts)
+
+        """
         print("Examples:\t{}\tAvg BLEU-1 score:\t{:.3f}\tBLEU-2:\t{:.3f}\tBLEU-4:{:.3f}".format(
             bleu_count, bleu1_sum / bleu_count, bleu2_sum / bleu_count,
             bleu4_sum / bleu_count))
-        runtimes.append(time.time() - now)
-        print("Average runtime {:.3f}".format(sum(runtimes) / len(runtimes)))
-        now = time.time()
+        """
+    scores, bleu_list = bleu.compute_score(option='closest', verbose=1)
+    print("BLEU Scores:")
+    print scores
 
 def strip_nonalnum(text):
     return re.sub(r'\W+', ' ', text.lower()).strip()
