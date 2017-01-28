@@ -30,7 +30,11 @@ def get_validation_set():
     print("Loaded {} validation examples".format(len(keys)))
     for key in keys:
         jpg_data, width, height, box, texts = get_grefexp(key)
-        x = image_caption.extract_features(jpg_data, width, height, box)
+        from vision_server import resnet
+        resnet.init()
+        pixels = util.decode_jpg(jpg_data)
+        resnet_preds = resnet.run(pixels)
+        x = image_caption.extract_features_from_preds(resnet_preds, width, height, box)
         x = np.expand_dims(x, axis=0)
         #print("Training on word sequence: {}".format(nlp_api.onehot_to_words(y)))
         yield x, texts
