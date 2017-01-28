@@ -1,4 +1,5 @@
 import sys
+import zlib
 import os
 import pickle
 import math
@@ -32,13 +33,13 @@ def vision_request(jpg_data, request_type, addr=DEFAULT_ADDR):
 
 def run_resnet(jpg_data):
     responseMsg = vision_request(jpg_data, request_type=VisionRequestType.resNet50)
-    preds = pickle.loads(responseMsg['frameData'])
+    preds = pickle.loads(zlib.decompress(responseMsg['frameData']))
     return preds
 
 
 def detect_human(jpg_data):
     responseMsg = vision_request(jpg_data, request_type=VisionRequestType.detectHuman)
-    preds = pickle.loads(responseMsg['frameData'])
+    preds = pickle.loads(zlib.decompress(responseMsg['frameData']))
     command = responseMsg['robotCommand']
     return preds, command
 

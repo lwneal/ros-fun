@@ -15,7 +15,6 @@ from shared import util
 from shared import nlp_api
 from datasets import dataset_grefexp
 from interfaces import image_caption
-from networks import mao_net
 
 
 def get_grefexp(key):

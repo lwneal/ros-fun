@@ -8,7 +8,6 @@ from keras.models import load_model
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from vision_server import resnet
 from shared import nlp_api
 from shared import vision_api
 from shared import util
@@ -22,17 +21,9 @@ def init(filename):
     global model
     start_time = time.time()
     if model is None:
-        resnet.init()
         print("Loading image captioning model from {}".format(filename))
         model = load_model(filename)
         print("Image Captioning model initialized in {:.3f} sec".format(time.time() - start_time))
-
-
-def run_on_jpg_filename(filename):
-    jpg = open(filename).read()
-    pixels = util.decode_jpg(jpg)
-    resnet_preds = resnet.run(pixels)
-    return run(resnet_preds)
 
 
 def run(resnet_preds, img_height, img_width, box):

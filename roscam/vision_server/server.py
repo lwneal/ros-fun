@@ -1,4 +1,5 @@
 import pickle
+import zlib
 import time
 import sys
 import struct
@@ -22,6 +23,8 @@ from interfaces import image_salience
 
 def resnet_request(pixels):
     preds = resnet.run(pixels)
+    # Truncate precision to 8 bits
+    preds = preds.astype(np.uint8)
     return preds
 
 
@@ -71,7 +74,7 @@ def handle_client(conn):
         preds, robotCommand = detect_human_request(pixels)
 
     outputMsg = FrameMsg.new_message()
-    outputMsg.frameData = pickle.dumps(preds)
+    outputMsg.frameData = zlib.compress(pickle.dumps(preds))
     if robotCommand:
         #print("Sending robot command: {}".format(robotCommand.to_dict()))
         outputMsg.robotCommand = robotCommand
