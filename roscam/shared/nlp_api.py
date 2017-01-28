@@ -9,9 +9,11 @@ END_TOKEN = '001'
 UNKNOWN_TOKEN = 'stuff'
 END_TOKEN_IDX = 3
 
+HOSTNAME = 'grapefruit.deeplearninggroup.com'
+
 # Input: text, a string
 def words_to_vec(text):
-    URL = 'http://localhost:8010/words_to_vec'
+    URL = 'http://{}:8010/words_to_vec'.format(HOSTNAME)
     r = requests.get(URL, data = {'text': text})
     words = pickle.loads(r.text)
     vectors, indices = zip(*words)
@@ -34,7 +36,7 @@ def onehot_to_indices(onehot):
 
 
 def indices_to_words(indices):
-    URL = 'http://localhost:8010/indices_to_words'
+    URL = 'http://{}:8010/indices_to_words'.format(HOSTNAME)
     indices_text = json.dumps(indices)
     r = requests.get(URL, data = {'indices': indices_text})
     words = r.text
