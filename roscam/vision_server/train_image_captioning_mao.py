@@ -28,13 +28,16 @@ def get_random_grefexp(reference_key=dataset_grefexp.KEY_GREFEXP_TRAIN):
 def get_next_example():
     while True:
         jpg_data, box, text = get_random_grefexp()
-        x = image_caption.extract_features(jpg_data, box)
+        pixels = util.decode_jpg(jpg_data)
+        preds = resnet.run(pixels)
+        width, height, _ = pixels.shape
+        x = image_caption.extract_features_from_preds(preds, width, height, box)
         y = nlp_api.words_to_onehot(text, pad_to_length=image_caption.MAX_OUTPUT_WORDS)
         #print("Training on word sequence: {}".format(nlp_api.onehot_to_words(y)))
         yield x, y
 
 
-def get_batch(batch_size=100):
+def get_batch(batch_size=50):
     X = []
     Y = []
     generator = get_next_example()
@@ -56,15 +59,16 @@ def draw_box(pixels, box):
 
 
 def demonstrate(model):
-    pixels, box, text = get_random_grefexp(reference_key=dataset_grefexp.KEY_GREFEXP_VAL)
+    jpg_data, box, text = get_random_grefexp(reference_key=dataset_grefexp.KEY_GREFEXP_VAL)
+    pixels = util.decode_jpg(jpg_data)
 
-    # TODO: draw pixels to screen?
     #draw_box(pixels, box)
-    #jpg_data = util.encode_jpg(pixels)
     #open('/tmp/example.jpg', 'w').write(jpg_data)
     #os.system('imgcat /tmp/example.jpg')
 
-    x = image_caption.extract_features(pixels, box)
+    preds = resnet.run(pixels)
+    width, height, _ = pixels.shape
+    x = image_caption.extract_features_from_preds(preds, width, height, box)
     x = np.expand_dims(x, axis=0)
     preds = model.predict(x)
     onehot_words = preds.reshape(preds.shape[1:])
@@ -97,6 +101,7 @@ if __name__ == '__main__':
     else:
         model = mao_net.build_model()
 
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=.001)
     resnet.init()
     try:
         while True:
