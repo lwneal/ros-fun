@@ -89,7 +89,7 @@ import string
 pattern = re.compile('[\W_]+')
 def text_to_words(text):
     text = pattern.sub(' ', text).lower()
-    return text.split()
+    return [START_TOKEN] + text.split() + [END_TOKEN]
 
 
 def pad_to_length(word_vectors, desired_length):
