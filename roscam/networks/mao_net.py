@@ -14,8 +14,8 @@ def build_model():
     model = Sequential()
     # TODO: Is this exactly the structure used from Mao et al?
     # https://arxiv.org/abs/1511.02283
-    model.add(RepeatVector(MAX_OUTPUT_WORDS, input_shape=(4101,)))
-    model.add(LSTM(1024, name='lstm_1', return_sequences=True))
+    #model.add(RepeatVector(MAX_OUTPUT_WORDS, input_shape=(4101,)))
+    model.add(LSTM(1024, input_shape=(None,4101), name='lstm_1', return_sequences=True))
     model.add(TimeDistributed(Dense(1024, name='fc_1')))
     model.add(TimeDistributed(Dense(VOCABULARY_SIZE, name='fc_2')))
 
