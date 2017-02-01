@@ -3,7 +3,7 @@ import numpy as np
 
 GLOVE_FILENAME = '/home/nealla/models/glove.6B.50d.txt'
 START_TOKEN = '000'
-END_TOKEN = '011'
+END_TOKEN = '001'
 UNKNOWN_TOKEN = 'stuff'
 
 glove_dict = None
