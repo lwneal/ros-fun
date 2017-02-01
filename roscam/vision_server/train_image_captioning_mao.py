@@ -37,7 +37,7 @@ def get_next_example():
         yield x, y
 
 
-def get_batch(batch_size=50):
+def get_batch(batch_size=10):
     X = []
     Y = []
     generator = get_next_example()
@@ -101,7 +101,7 @@ if __name__ == '__main__':
     else:
         model = mao_net.build_model()
 
-    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=.01)
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=.05)
     resnet.init()
     try:
         while True:

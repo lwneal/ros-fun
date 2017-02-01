@@ -9,6 +9,7 @@ import time
 from keras.models import load_model
 import numpy as np
 from PIL import Image
+import rouge_scorer
 import bleu_scorer
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -42,33 +43,43 @@ def get_validation_set():
 
 
 def evaluate(model):
+    score_names = ['BLEU1', 'BLEU2', 'ROUGE']
+    scores = compute_scores(model)
+    for name, score_list in zip(score_names, scores):
+        print name
+        from scipy import stats
+        print stats.describe(score_list)
 
-    bleu = bleu_scorer.BleuScorer(n=4)
 
-    for x, correct_texts in get_validation_set():
+def compute_scores(model):
+    score_list = []
+    for x, reference_texts in get_validation_set():
         preds = model.predict(x)
         output_words = nlp_api.onehot_to_words(preds.reshape(preds.shape[1:]))
-        output_words = output_words.replace('001', '')  # Remove end token
+        candidate = strip(output_words)
+        references = [strip(r) for r in reference_texts]
 
-        bleu += (output_words, correct_texts)
+        bleu1_score, bleu2_score = bleu(candidate, references)
+        rouge_score = rouge([candidate], reference_texts)
 
-        """
-        print("Examples:\t{}\tAvg BLEU-1 score:\t{:.3f}\tBLEU-2:\t{:.3f}\tBLEU-4:{:.3f}".format(
-            bleu_count, bleu1_sum / bleu_count, bleu2_sum / bleu_count,
-            bleu4_sum / bleu_count))
-        """
-    scores, bleu_list = bleu.compute_score(option='closest', verbose=1)
-    print("BLEU Scores:")
-    print scores
+        print bleu1_score, bleu2_score, rouge_score, candidate
+        score_list.append((bleu1_score, bleu2_score, rouge_score))
+    return zip(*score_list)
 
-def strip_nonalnum(text):
+
+def strip(text):
+    text = text.replace('001', '').replace('000', '')
     return re.sub(r'\W+', ' ', text.lower()).strip()
 
-def bleu(output_words, correct_texts):
-    output_words = strip_nonalnum(output_words)
-    correct_texts = [strip_nonalnum(r) for r in correct_texts]
-    scores, _ = bleu_scorer.BleuScorer(output_words, correct_texts).compute_score()
+
+def bleu(candidate, references):
+    scores, _ = bleu_scorer.BleuScorer(candidate, references, n=2).compute_score(option='closest')
     return scores
+
+
+def rouge(candidate, references):
+    return rouge_scorer.Rouge().calc_score(candidate, references)
+
 
 if __name__ == '__main__':
     input_filename = sys.argv[1]
