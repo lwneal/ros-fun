@@ -68,7 +68,7 @@ def compute_scores(model):
 
 
 def strip(text):
-    text = text.replace('011', '').replace('001', '')
+    text = text.replace('000', '').replace('001', '')
     return re.sub(r'\W+', ' ', text.lower()).strip()
 
 
