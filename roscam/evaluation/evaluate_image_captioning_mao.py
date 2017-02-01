@@ -62,7 +62,7 @@ def compute_scores(model):
         bleu1_score, bleu2_score = bleu(candidate, references)
         rouge_score = rouge([candidate], reference_texts)
 
-        print bleu1_score, bleu2_score, rouge_score, candidate
+        print('{:.3f} {:.3f} {:.3f} {}'.format(bleu1_score, bleu2_score, rouge_score, candidate))
         score_list.append((bleu1_score, bleu2_score, rouge_score))
     return zip(*score_list)
 
