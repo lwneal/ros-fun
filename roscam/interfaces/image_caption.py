@@ -33,7 +33,7 @@ def run(resnet_preds, img_height, img_width, box):
     return nlp_api.onehot_to_words(onehot)
 
 
-def extract_features_from_preds(resnet_preds, img_height, img_width, bbox):
+def extract_features_from_preds(resnet_preds, img_height, img_width, bbox, pad_to_length=None):
     preds_height, preds_width, preds_depth = resnet_preds.shape
     assert preds_depth == 2048
 
@@ -63,10 +63,13 @@ def extract_features_from_preds(resnet_preds, img_height, img_width, bbox):
     context_vector[4] = float((x1 - x0) * (y1 - y0)) / (img_width*img_height)
 
     # Output: 2048 + 2048 + 5 = 4101
-    first_input = np.concatenate((local_preds, avg_resnet_preds, context_vector))
-    padding = np.zeros((MAX_OUTPUT_WORDS,4101))
-    padding[0] = first_input
-    return padding
+    visual_input = np.concatenate((local_preds, avg_resnet_preds, context_vector))
+    # Output with padding: 12 x 4101
+    if pad_to_length:
+        padding = np.zeros((pad_to_length,4101))
+        padding[0] = visual_input
+        return padding
+    return visual_input
 
 
 def extract_features(jpg_data, img_width, img_height, bbox):
