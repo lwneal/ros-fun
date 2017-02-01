@@ -19,7 +19,7 @@ from networks import mao_net
 
 def get_random_grefexp(reference_key=dataset_grefexp.KEY_GREFEXP_TRAIN):
     grefexp, anno, img_meta, jpg_data = dataset_grefexp.random_annotation(reference_key)
-    x0, width, y0, height = anno['bbox']
+    x0, y0, width, height = anno['bbox']
     box = (x0, x0 + width, y0, y0 + height)
     text = random.choice(grefexp['refexps'])['raw']
     return jpg_data, box, text
