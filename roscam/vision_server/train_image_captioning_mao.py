@@ -148,8 +148,9 @@ if __name__ == '__main__':
 
     save_model_info(info_filename, info, model_filename)
     resnet.init()
-    # TODO: Adjust learning rate over time?
-    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=.05)
+    # TODO: docopt or argparse
+    learning_rate = float(sys.argv[2])
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=learning_rate)
     model.summary()
     try:
         while True:
