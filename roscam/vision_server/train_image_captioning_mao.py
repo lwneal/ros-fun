@@ -123,9 +123,14 @@ def save_model_info(info_filename, info, model_filename):
     with open(info_filename, 'w') as fp:
         fp.write(json.dumps(info, indent=2))
 
+def get_checksum(filename):
+    try:
+        return subprocess.check_output(['md5sum', model_filename])
+    except:
+        return '0'
 
 def save_training_info(info_filename, info, model_filename):
-    info['checksum'] = subprocess.check_output(['md5sum', model_filename])
+    info['checksum'] = get_checksum(model_filename)
     data = json.load(open(info_filename))
     data['history'].append(info)
     with open(info_filename, 'w') as fp:
