@@ -56,6 +56,8 @@ def get_batch(batch_size=10, **kwargs):
 
 def draw_box(pixels, box):
     x0, x1, y0, y1 = box
+    x1 -= 1
+    y1 -= 1
     pixels[y0, x0:x1] = 255
     pixels[y1, x0:x1] = 255
     pixels[y0:y1, x0] = 255
@@ -66,9 +68,9 @@ def demonstrate(model):
     jpg_data, box, text = get_random_grefexp(reference_key=dataset_grefexp.KEY_GREFEXP_VAL)
     pixels = util.decode_jpg(jpg_data)
 
-    #draw_box(pixels, box)
-    #open('/tmp/example.jpg', 'w').write(jpg_data)
-    #os.system('imgcat /tmp/example.jpg')
+    draw_box(pixels, box)
+    open('/tmp/example.jpg', 'w').write(util.encode_jpg(pixels))
+    os.system('imgcat /tmp/example.jpg')
 
     preds = resnet.run(pixels)
     width, height, _ = pixels.shape
