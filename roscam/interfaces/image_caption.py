@@ -76,10 +76,3 @@ def extract_features_from_preds(resnet_preds, img_height, img_width, bbox, pad_t
         padding[0] = visual_input
         return padding
     return visual_input
-
-
-def extract_features(jpg_data, img_width, img_height, bbox):
-    #img_height, img_width, channels = img.shape
-    resnet_preds = vision_api.run_resnet(jpg_data)
-    return extract_features_from_preds(resnet_preds, img_height, img_width, bbox)
-

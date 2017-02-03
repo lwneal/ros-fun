@@ -75,3 +75,20 @@ def draw_text(image_array, text):
     draw.rectangle((0, 0, img.width, 16), fill=(0,0,0,0))
     draw.text((0, 0), text, (255,255,255), font=font)
     return np.array(img)
+
+
+def draw_box(pixels, box):
+    x0, x1, y0, y1 = box
+    x1 -= 1
+    y1 -= 1
+    pixels[y0, x0:x1] = 255
+    pixels[y1, x0:x1] = 255
+    pixels[y0:y1, x0] = 255
+    pixels[y0:y1, x1] = 255
+
+
+def file_checksum(filename):
+    try:
+        return subprocess.check_output(['md5sum', model_filename])
+    except:
+        return '0'

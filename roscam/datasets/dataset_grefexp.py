@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import random
 
 import redis
 import numpy as np
@@ -37,3 +38,11 @@ def get_annotation_for_key(key):
 
     jpg_data = open(os.path.join(DATA_DIR, img_meta['filename'])).read()
     return grefexp, anno, img_meta, jpg_data
+
+
+def random_generation_example(reference_key=KEY_GREFEXP_TRAIN):
+    grefexp, anno, img_meta, jpg_data = random_annotation(reference_key)
+    x0, y0, width, height = anno['bbox']
+    box = (x0, x0 + width, y0, y0 + height)
+    text = random.choice(grefexp['refexps'])['raw']
+    return jpg_data, box, text

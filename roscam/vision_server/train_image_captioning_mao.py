@@ -19,102 +19,76 @@ import resnet
 from datasets import dataset_grefexp
 from interfaces import image_caption
 from networks import mao_net
+from networks.mao_net import BATCH_SIZE
 
 
-def get_random_grefexp(reference_key=dataset_grefexp.KEY_GREFEXP_TRAIN):
-    grefexp, anno, img_meta, jpg_data = dataset_grefexp.random_annotation(reference_key)
-    x0, y0, width, height = anno['bbox']
-    box = (x0, x0 + width, y0, y0 + height)
-    text = random.choice(grefexp['refexps'])['raw']
-    return jpg_data, box, text
-
-
-def get_next_example(average_box_context=False):
-    while True:
-        jpg_data, box, text = get_random_grefexp()
-        pixels = util.decode_jpg(jpg_data)
-        preds = resnet.run(pixels)
-        width, height, _ = pixels.shape
-        x = image_caption.extract_features_from_preds(preds, width, height, box)
-        y = nlp_api.words_to_onehot(text, pad_to_length=image_caption.MAX_OUTPUT_WORDS)
-        #print("Training on word sequence: {}".format(nlp_api.onehot_to_words(y)))
-        yield x, y
-
-
-def get_batch(batch_size=10, **kwargs):
-    X = []
-    Y = []
-    generator = get_next_example(**kwargs)
-    for _ in range(batch_size):
-        x_i, y_i = next(generator)
-        X.append(x_i)
-        Y.append(y_i)
-    X = np.array(X)
-    Y = np.array(Y)
-    return X, Y
-
-
-def draw_box(pixels, box):
-    x0, x1, y0, y1 = box
-    x1 -= 1
-    y1 -= 1
-    pixels[y0, x0:x1] = 255
-    pixels[y1, x0:x1] = 255
-    pixels[y0:y1, x0] = 255
-    pixels[y0:y1, x1] = 255
-
-
-def demonstrate(model):
-    jpg_data, box, text = get_random_grefexp(reference_key=dataset_grefexp.KEY_GREFEXP_VAL)
+def extract_visual_features(jpg_data, box):
     pixels = util.decode_jpg(jpg_data)
-
-    draw_box(pixels, box)
-    open('/tmp/example.jpg', 'w').write(util.encode_jpg(pixels))
-    os.system('imgcat /tmp/example.jpg')
-
     preds = resnet.run(pixels)
     width, height, _ = pixels.shape
-    x = image_caption.extract_features_from_preds(preds, width, height, box)
-    x = np.expand_dims(x, axis=0)
-    preds = model.predict(x)
-    onehot_words = preds.reshape(preds.shape[1:])
-    print("Demonstration image {}x{}".format(pixels.shape[1], pixels.shape[0]))
-    print('Correct Answer: {}'.format(text))
-    print('Prediction: {}'.format(nlp_api.onehot_to_words(onehot_words)))
+    return image_caption.extract_features_from_preds(preds, width, height, box)
 
 
-def train(model, learning_rate=.05, batch_size=10):
-    training_kwargs = {
-        'average_box_context': False,
-    }
-    def generator():
-        try:
-            while True:
-                yield get_batch(batch_size, **training_kwargs)
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
+def example_generator():
+    # Each generator produces a never-ending stream of input like this:
+    # <start> the cat on the mat <end> <start> the dog on the log <end> <start> the...
+    # Note that each of the BATCH_SIZE generators is completely separate
+    # NOTE: Reset the LSTM state after each <end> token is output
+    while True:
+        jpg_data, box, text = dataset_grefexp.random_generation_example()
+        img_features = extract_visual_features(jpg_data, box)
+        words = nlp_api.words_to_onehot(text)
+        for word in words:
+            yield np.concatenate((img_features, word))
 
 
-    print("Training start: weights avg: {}".format(model.get_weights()[0].mean()))
+def training_batch_generator(**kwargs):
+    # Create BATCH_SIZE separate stateful generators
+    generators = [example_generator() for _ in range(BATCH_SIZE)]
+
+    # Given word n, predict word n+1
+    Y = np.array([next(g) for g in generators])
+    while True:
+        X = Y.copy()
+        Y = np.array([next(g) for g in generators])
+        # Input is visual+word, output is word
+        yield np.expand_dims(X, axis=1), Y[:,4101:]
+
+def demonstrate(model, gen):
+    DEMO_LEN = 10
+    words = np.zeros((DEMO_LEN, BATCH_SIZE, image_caption.VOCABULARY_SIZE))
+    X, _ = next(gen)
+    visual = X[:,0,:4101]
+    seed_words = X[:,0,4101:]
+    words[0,:,:] = seed_words
+    for i in range(1, DEMO_LEN):
+        prev_word = words[i-1]
+        model_input = np.concatenate((visual, prev_word), axis=1)
+        model_input = np.expand_dims(model_input, axis=1)
+        words[i] = model.predict(model_input)
+
+    for b in range(DEMO_LEN):
+        print nlp_api.onehot_to_words(words[b])
+
+
+def train(model, **kwargs):
     start_time = time.time()
-    history = model.fit_generator(generator(), samples_per_epoch=1000, nb_epoch=1)
-    print("Training end: weights mean {}".format(model.get_weights()[0].mean()))
+    gen = training_batch_generator(**kwargs)
 
-    info = {
-            'start_time': start_time,
-            'end_time': time.time(),
-            'loss': history.history['loss'][0],
-            'hostname': socket.gethostname(),
-            'dataset': 'dataset_grefexp_train',
-            'learning_rate': learning_rate,
-            'optimizer': 'rmsprop',
-            'batch_size': batch_size,
-            'samples': 1000,
-            'training_kwargs': training_kwargs,
+    demonstrate(model, gen)
+
+    for i in range(100):
+        X, Y = next(gen)
+        loss = model.train_on_batch(X, Y)
+        print loss
+
+    return {
+        'start_time': start_time,
+        'duration': time.time() - start_time,
+        'loss': float(loss),
+        'training_kwargs': kwargs,
     }
-    demonstrate(model)
-    return info
+
 
 def save_model_info(info_filename, info, model_filename):
     if os.path.exists(info_filename):
@@ -124,18 +98,14 @@ def save_model_info(info_filename, info, model_filename):
     with open(info_filename, 'w') as fp:
         fp.write(json.dumps(info, indent=2))
 
-def get_checksum(filename):
-    try:
-        return subprocess.check_output(['md5sum', model_filename])
-    except:
-        return '0'
 
 def save_training_info(info_filename, info, model_filename):
-    info['checksum'] = get_checksum(model_filename)
+    info['checksum'] = util.file_checksum(model_filename)
     data = json.load(open(info_filename))
     data['history'].append(info)
     with open(info_filename, 'w') as fp:
         fp.write(json.dumps(data, indent=2))
+
 
 if __name__ == '__main__':
     model_filename = sys.argv[1]
