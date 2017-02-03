@@ -93,7 +93,6 @@ def train(model, learning_rate=.05, batch_size=10):
             import traceback
             traceback.print_exc()
 
-    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=learning_rate)
 
     print("Training start: weights avg: {}".format(model.get_weights()[0].mean()))
     start_time = time.time()
@@ -149,6 +148,9 @@ if __name__ == '__main__':
 
     save_model_info(info_filename, info, model_filename)
     resnet.init()
+    # TODO: Adjust learning rate over time?
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=.05)
+    model.summary()
     try:
         while True:
             train_info = train(model)
