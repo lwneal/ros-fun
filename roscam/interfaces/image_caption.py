@@ -33,18 +33,24 @@ def run(resnet_preds, img_height, img_width, box):
     return nlp_api.onehot_to_words(onehot)
 
 
-def extract_features_from_preds(resnet_preds, img_height, img_width, bbox, pad_to_length=None):
+def extract_features_from_preds(resnet_preds, img_height, img_width, bbox, pad_to_length=None, average_box=True):
     preds_height, preds_width, preds_depth = resnet_preds.shape
     assert preds_depth == 2048
 
     # Select a single 2048-dim vector from the center of the bbox
-    # TODO: Or average over all vectors in the bbox?
+    # Or, average over all vectors in the bbox
     x0, x1, y0, y1 = bbox
-    center_x = ((x0 + x1) / 2.0)  * (float(preds_width) / img_width)
-    center_y = ((y0 + y1) / 2.0)  * (float(preds_height) / img_height)
-    center_x = np.clip(center_x, 0, preds_width-1)
-    center_y = np.clip(center_y, 0, preds_height-1)
-    local_preds = resnet_preds[int(center_y), int(center_x)]
+
+    if average_box:
+        sx = float(preds_width) / img_width
+        sy = float(preds_height) / img_height
+        local_preds = resnet_preds[y0*sy:y1*sy, x0*sx:x1*sx].mean(axis=0).mean(axis=0)
+    else:
+        center_x = ((x0 + x1) / 2.0)  * (float(preds_width) / img_width)
+        center_y = ((y0 + y1) / 2.0)  * (float(preds_height) / img_height)
+        center_x = np.clip(center_x, 0, preds_width-1)
+        center_y = np.clip(center_y, 0, preds_height-1)
+        local_preds = resnet_preds[int(center_y), int(center_x)]
 
     # Also use global context: average over the image
     avg_resnet_preds = resnet_preds.mean(axis=0).mean(axis=0)
