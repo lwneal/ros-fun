@@ -75,8 +75,6 @@ def train(model, **kwargs):
     start_time = time.time()
     gen = training_batch_generator(**kwargs)
 
-    demonstrate(model, gen)
-
     for i in range(100):
         X, Y = next(gen)
         loss = model.train_on_batch(X, Y)
@@ -87,6 +85,8 @@ def train(model, **kwargs):
             print(word),
     print()
     print("Finished training for 100 batches. Loss: {}".format(loss))
+
+    demonstrate(model, gen)
 
     return {
         'start_time': start_time,
