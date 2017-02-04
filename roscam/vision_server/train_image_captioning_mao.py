@@ -29,7 +29,7 @@ def extract_visual_features(jpg_data, box):
     return image_caption.extract_features_from_preds(preds, width, height, box)
 
 
-def example_generator():
+def example_generator(idx):
     # Each generator produces a never-ending stream of input like this:
     # <start> the cat on the mat <end> <start> the dog on the log <end> <start> the...
     # Note that each of the BATCH_SIZE generators is completely separate
@@ -38,13 +38,14 @@ def example_generator():
         jpg_data, box, text = dataset_grefexp.random_generation_example()
         img_features = extract_visual_features(jpg_data, box)
         words = nlp_api.words_to_onehot(text)
+        #print("Generator {}: {}".format(idx, nlp_api.onehot_to_words(words)))
         for word in words:
             yield np.concatenate((img_features, word))
 
 
 def training_batch_generator(**kwargs):
     # Create BATCH_SIZE separate stateful generators
-    generators = [example_generator() for _ in range(BATCH_SIZE)]
+    generators = [example_generator(i) for i in range(BATCH_SIZE)]
 
     # Given word n, predict word n+1
     Y = np.array([next(g) for g in generators])
@@ -53,6 +54,7 @@ def training_batch_generator(**kwargs):
         Y = np.array([next(g) for g in generators])
         # Input is visual+word, output is word
         yield np.expand_dims(X, axis=1), Y[:,4101:]
+
 
 def demonstrate(model, gen):
     DEMO_LEN = 10
