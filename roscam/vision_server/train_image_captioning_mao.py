@@ -51,9 +51,21 @@ def training_batch_generator(**kwargs):
     Y = np.array([next(g) for g in generators])
     while True:
         X = Y.copy()
-        Y = np.array([next(g) for g in generators])
+
+        X = manywarm_to_onehot(X)
+
         # Input is visual+word, output is word
+        Y = np.array([next(g) for g in generators])
         yield np.expand_dims(X, axis=1), Y[:,4101:]
+
+
+def manywarm_to_onehot(X, offset=4101):
+    # Squash the many-warm softmax output into a one-hot input
+    word_idx = np.argmax(X[:,offset:], axis=1)
+    X[:,offset:] = 0
+    for i in range(BATCH_SIZE):
+        X[i, offset + word_idx[i]] = 1.0
+    return X
 
 
 def demonstrate(model, gen):
@@ -64,11 +76,12 @@ def demonstrate(model, gen):
     seed_words = X[:,0,4101:]
     words[0,:,:] = seed_words
     for i in range(1, DEMO_LEN):
-        prev_word = words[i-1]
+        prev_word = manywarm_to_onehot(words[i-1], offset=0)
         model_input = np.concatenate((visual, prev_word), axis=1)
         model_input = np.expand_dims(model_input, axis=1)
         words[i] = model.predict(model_input)
 
+    print("Demonstration on {} images:".format(BATCH_SIZE))
     for i in range(BATCH_SIZE):
         print nlp_api.onehot_to_words(words[:,i])
 
@@ -80,12 +93,6 @@ def train(model, **kwargs):
     for i in range(100):
         X, Y = next(gen)
         loss = model.train_on_batch(X, Y)
-        word = nlp_api.onehot_to_words(np.array([Y[0]]))
-        if word == '001':
-            print('\n'),
-        else:
-            print(word),
-    print()
     print("Finished training for 100 batches. Loss: {}".format(loss))
 
     demonstrate(model, gen)
