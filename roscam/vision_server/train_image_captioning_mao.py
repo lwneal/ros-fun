@@ -67,8 +67,8 @@ def demonstrate(model, gen):
         model_input = np.expand_dims(model_input, axis=1)
         words[i] = model.predict(model_input)
 
-    for b in range(DEMO_LEN):
-        print nlp_api.onehot_to_words(words[b])
+    for i in range(BATCH_SIZE):
+        print nlp_api.onehot_to_words(words[:,i])
 
 
 def train(model, **kwargs):
@@ -80,7 +80,13 @@ def train(model, **kwargs):
     for i in range(100):
         X, Y = next(gen)
         loss = model.train_on_batch(X, Y)
-        print loss
+        word = nlp_api.onehot_to_words(np.array([Y[0]]))
+        if word == '001':
+            print('\n'),
+        else:
+            print(word),
+    print()
+    print("Finished training for 100 batches. Loss: {}".format(loss))
 
     return {
         'start_time': start_time,
