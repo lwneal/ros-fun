@@ -44,7 +44,15 @@ def extract_features_from_preds(resnet_preds, img_height, img_width, bbox, pad_t
     if average_box:
         sx = float(preds_width) / img_width
         sy = float(preds_height) / img_height
-        local_preds = resnet_preds[y0*sy:y1*sy, x0*sx:x1*sx].mean(axis=0).mean(axis=0)
+        py0, py1 = y0*sy, y1*sy
+        px0, px1 = x0*sx, x1*sx
+        if py1 <= py0:
+            print("Clipping vertically empty bounding box {}".format(bbox))
+            py1 = py0 + 1
+        if px1 <= px0:
+            print("Clipping horizontally empty bounding box {}".format(bbox))
+            px1 = px0 + 1
+        local_preds = resnet_preds[py0:py1, px0:px1].mean(axis=0).mean(axis=0)
     else:
         center_x = ((x0 + x1) / 2.0)  * (float(preds_width) / img_width)
         center_y = ((y0 + y1) / 2.0)  * (float(preds_height) / img_height)
