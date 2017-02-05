@@ -73,8 +73,8 @@ def demonstrate(model, gen):
     words = np.zeros((DEMO_LEN, BATCH_SIZE, image_caption.VOCABULARY_SIZE))
     X, _ = next(gen)
     visual = X[:,0,:4101]
-    seed_words = X[:,0,4101:]
-    words[0,:,:] = seed_words
+    #words[0,:,:] = seed_words
+    words[0,:,2] = 1.0
     for i in range(1, DEMO_LEN):
         prev_word = manywarm_to_onehot(words[i-1], offset=0)
         model_input = np.concatenate((visual, prev_word), axis=1)
@@ -90,10 +90,13 @@ def train(model, **kwargs):
     start_time = time.time()
     gen = training_batch_generator(**kwargs)
 
-    for i in range(100):
+    iters = 100
+    loss = 0
+    for i in range(iters):
         X, Y = next(gen)
-        loss = model.train_on_batch(X, Y)
-    print("Finished training for 100 batches. Loss: {}".format(loss))
+        loss += model.train_on_batch(X, Y)
+    loss /= iters
+    print("Finished training for 100 batches. Avg. loss: {}".format(loss))
 
     demonstrate(model, gen)
 
