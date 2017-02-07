@@ -22,17 +22,14 @@ def build_model():
 
     visual_input = Sequential()
     visual_input.add(BatchNormalization(batch_input_shape=(BATCH_SIZE, 1, IMAGE_FEATURE_SIZE)))
-    visual_input.add(TimeDistributed(Dense(128)))
 
     word_input = Sequential()
     word_input_shape=(BATCH_SIZE, 1, VOCABULARY_SIZE)
     word_input.add(Masking(batch_input_shape=word_input_shape))
-    word_input.add(TimeDistributed(Dense(128)))
 
     model = Sequential()
     model.add(Merge([visual_input, word_input], mode='concat', concat_axis=2))
-    model.add(LSTM(256, name='lstm_1', return_sequences=True, stateful=True, unroll=True))
-    model.add(TimeDistributed(Dense(128, name='fc_1')))
-    model.add(TimeDistributed(Dense(VOCABULARY_SIZE, name='fc_2')))
+    model.add(LSTM(1024, name='lstm_1', return_sequences=True, stateful=True))
+    model.add(TimeDistributed(Dense(VOCABULARY_SIZE, name='fc_1')))
     model.add(Activation('softmax', name='softmax_1'))
     return model

@@ -36,10 +36,6 @@ def example_generator(idx):
     # Note that each of the BATCH_SIZE generators is completely separate
     # NOTE: Reset the LSTM state after each <end> token is output
     jpg_data, box, text = dataset_grefexp.random_generation_example()
-    text = random.choice([
-        'the apple banana',
-        'the left dog right cat',
-    ])
     img_features = extract_visual_features(jpg_data, box)
     words = nlp_api.words_to_onehot(text)
     #print("Generator {}: {}".format(idx, nlp_api.onehot_to_words(words)))
@@ -84,7 +80,7 @@ def demonstrate(model, gen):
         visual_input = np.expand_dims(visual,axis=1)
         word_input = np.expand_dims(words[i-1], axis=1)
         words[i] = model.predict([visual_input, word_input])[:,0,:]
-        print("Predict: {} -> {}".format(np.argmax(words[i-1][0]), np.argmax(words[i][0])))
+        #print("Predict: {} -> {}".format(np.argmax(words[i-1][0]), np.argmax(words[i][0])))
 
     print("Demonstration on {} images:".format(BATCH_SIZE))
     for i in range(BATCH_SIZE):
