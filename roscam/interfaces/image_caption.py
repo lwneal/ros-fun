@@ -11,9 +11,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared import nlp_api
 from shared import vision_api
 from shared import util
+from shared.nlp_api import VOCABULARY_SIZE
 
 MAX_OUTPUT_WORDS = 12
-VOCABULARY_SIZE = 28519  # TODO: Get this from the NLP server
 
 model = None
 
@@ -44,8 +44,8 @@ def extract_features_from_preds(resnet_preds, img_height, img_width, bbox, pad_t
     if average_box:
         sx = float(preds_width) / img_width
         sy = float(preds_height) / img_height
-        py0, py1 = y0*sy, y1*sy
-        px0, px1 = x0*sx, x1*sx
+        py0, py1 = int(y0*sy), int(y1*sy)
+        px0, px1 = int(x0*sx), int(x1*sx)
         if py1 <= py0:
             print("Clipping vertically empty bounding box {}".format(bbox))
             py1 = py0 + 1
