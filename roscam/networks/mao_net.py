@@ -4,20 +4,35 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from shared import util
-from interfaces.image_caption import MAX_OUTPUT_WORDS, VOCABULARY_SIZE
+from interfaces.image_caption import MAX_OUTPUT_WORDS
+from shared.nlp_api import VOCABULARY_SIZE
 
 BATCH_SIZE=16
+IMAGE_FEATURE_SIZE = 4101
 
 
 def build_model():
     from keras.models import Sequential
-    from keras.layers import LSTM, Dense, TimeDistributed, Activation, Dropout
+    from keras.layers import LSTM, Dense, TimeDistributed, Activation, Dropout, Merge
+    from keras.layers import BatchNormalization
+    from keras.layers import Masking
 
     # As described in https://arxiv.org/abs/1511.02283
     # Input: The 4101-dim feature from extract_features, and the previous output word
+
+    visual_input = Sequential()
+    visual_input.add(BatchNormalization(batch_input_shape=(BATCH_SIZE, 1, IMAGE_FEATURE_SIZE)))
+    visual_input.add(TimeDistributed(Dense(128)))
+
+    word_input = Sequential()
+    word_input_shape=(BATCH_SIZE, 1, VOCABULARY_SIZE)
+    word_input.add(Masking(batch_input_shape=word_input_shape))
+    word_input.add(TimeDistributed(Dense(128)))
+
     model = Sequential()
-    input_shape = (BATCH_SIZE, 1, 4101 + VOCABULARY_SIZE)
-    model.add(LSTM(1024, batch_input_shape=input_shape, name='lstm_1', stateful=True))
-    model.add(Dense(VOCABULARY_SIZE, name='fc_2'))
+    model.add(Merge([visual_input, word_input], mode='concat', concat_axis=2))
+    model.add(LSTM(256, name='lstm_1', return_sequences=True, stateful=True, unroll=True))
+    model.add(TimeDistributed(Dense(128, name='fc_1')))
+    model.add(TimeDistributed(Dense(VOCABULARY_SIZE, name='fc_2')))
     model.add(Activation('softmax', name='softmax_1'))
     return model

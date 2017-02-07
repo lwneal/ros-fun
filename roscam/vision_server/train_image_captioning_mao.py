@@ -20,6 +20,7 @@ from datasets import dataset_grefexp
 from interfaces import image_caption
 from networks import mao_net
 from networks.mao_net import BATCH_SIZE
+from interfaces.image_caption import VOCABULARY_SIZE
 
 
 def extract_visual_features(jpg_data, box):
@@ -34,13 +35,20 @@ def example_generator(idx):
     # <start> the cat on the mat <end> <start> the dog on the log <end> <start> the...
     # Note that each of the BATCH_SIZE generators is completely separate
     # NOTE: Reset the LSTM state after each <end> token is output
+    jpg_data, box, text = dataset_grefexp.random_generation_example()
+    text = random.choice([
+        'the apple banana',
+        'the left dog right cat',
+    ])
+    img_features = extract_visual_features(jpg_data, box)
+    words = nlp_api.words_to_onehot(text)
+    #print("Generator {}: {}".format(idx, nlp_api.onehot_to_words(words)))
+    for word in words:
+        yield np.concatenate((img_features, word))
     while True:
-        jpg_data, box, text = dataset_grefexp.random_generation_example()
-        img_features = extract_visual_features(jpg_data, box)
-        words = nlp_api.words_to_onehot(text)
-        #print("Generator {}: {}".format(idx, nlp_api.onehot_to_words(words)))
-        for word in words:
-            yield np.concatenate((img_features, word))
+        empty = np.zeros(VOCABULARY_SIZE)
+        #end_token[3] = 1.0
+        yield np.concatenate((img_features, empty))
 
 
 def training_batch_generator(**kwargs):
@@ -51,12 +59,9 @@ def training_batch_generator(**kwargs):
     Y = np.array([next(g) for g in generators])
     while True:
         X = Y.copy()
-
-        X = manywarm_to_onehot(X)
-
         # Input is visual+word, output is word
         Y = np.array([next(g) for g in generators])
-        yield np.expand_dims(X, axis=1), Y[:,4101:]
+        yield np.expand_dims(X, axis=1), Y[:, 4101:]
 
 
 def manywarm_to_onehot(X, offset=4101):
@@ -76,10 +81,10 @@ def demonstrate(model, gen):
     #words[0,:,:] = seed_words
     words[0,:,2] = 1.0
     for i in range(1, DEMO_LEN):
-        prev_word = manywarm_to_onehot(words[i-1], offset=0)
-        model_input = np.concatenate((visual, prev_word), axis=1)
-        model_input = np.expand_dims(model_input, axis=1)
-        words[i] = model.predict(model_input)
+        visual_input = np.expand_dims(visual,axis=1)
+        word_input = np.expand_dims(words[i-1], axis=1)
+        words[i] = model.predict([visual_input, word_input])[:,0,:]
+        print("Predict: {} -> {}".format(np.argmax(words[i-1][0]), np.argmax(words[i][0])))
 
     print("Demonstration on {} images:".format(BATCH_SIZE))
     for i in range(BATCH_SIZE):
@@ -88,15 +93,22 @@ def demonstrate(model, gen):
 
 def train(model, **kwargs):
     start_time = time.time()
-    gen = training_batch_generator(**kwargs)
 
-    iters = 100
+    iters = 20
     loss = 0
     for i in range(iters):
-        X, Y = next(gen)
-        loss += model.train_on_batch(X, Y)
+        model.reset_states()
+        gen = training_batch_generator(**kwargs)
+        for i in range(10):
+            X, Y = next(gen)
+            Y = np.expand_dims(Y, axis=1)
+            visual = X[:,:,:4101]
+            language = X[:,:,4101:]
+            loss += model.train_on_batch([visual, language], Y)
+            #print("Train: {} -> {}".format(np.argmax(language[0,0,:]), np.argmax(Y[0,0,:])))
+    model.reset_states()
     loss /= iters
-    print("Finished training for 100 batches. Avg. loss: {}".format(loss))
+    print("Finished training for {} batches. Avg. loss: {}".format(iters, loss))
 
     demonstrate(model, gen)
 
