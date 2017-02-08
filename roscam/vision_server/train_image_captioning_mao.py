@@ -135,11 +135,10 @@ def save_training_info(info_filename, info, model_filename):
 
 if __name__ == '__main__':
     model_filename = sys.argv[1]
+    model = mao_net.build_model()
     if os.path.exists(model_filename):
-        from keras.models import load_model
-        model = load_model(model_filename)
-    else:
-        model = mao_net.build_model()
+        from shared.serialization import load_weights
+        load_weights(model, model_filename)
 
     info_filename = model_filename.replace('.h5', '') + '.json'
     info = {}
@@ -149,8 +148,6 @@ if __name__ == '__main__':
     # TODO: docopt or argparse
     learning_rate = float(sys.argv[2])
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=learning_rate)
-
-    #mao_net.monkeypatch_model(model)
     model.summary()
     try:
         while True:
