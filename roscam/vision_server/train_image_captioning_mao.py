@@ -149,6 +149,8 @@ if __name__ == '__main__':
     # TODO: docopt or argparse
     learning_rate = float(sys.argv[2])
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=learning_rate)
+
+    #mao_net.monkeypatch_model(model)
     model.summary()
     try:
         while True:
