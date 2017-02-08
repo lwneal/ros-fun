@@ -65,10 +65,12 @@ def build_model():
     word_input.add(Masking(batch_input_shape=word_input_shape))
     embed_layer = Dense(1024, name='embed_forward')
     word_input.add(TimeDistributed(embed_layer))
+    word_input.add(Dropout(0.5))
 
     model = Sequential()
     model.add(Merge([visual_input, word_input], mode='concat', concat_axis=2))
     model.add(LSTM(1024, name='lstm_1', return_sequences=True, stateful=True))
+    model.add(Dropout(0.5))
     model.add(TimeDistributed(TiedDense(VOCABULARY_SIZE, master_layer=embed_layer, name='embed_back')))
     model.add(Activation('softmax', name='softmax_1'))
 
