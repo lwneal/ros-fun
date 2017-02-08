@@ -58,7 +58,7 @@ def build_model():
     # Input: The 4101-dim feature from extract_features, and the previous output word
 
     visual_input = Sequential()
-    visual_input.add(BatchNormalization(batch_input_shape=(BATCH_SIZE, 1, IMAGE_FEATURE_SIZE)))
+    visual_input.add(BatchNormalization(batch_input_shape=(BATCH_SIZE, 1, IMAGE_FEATURE_SIZE), name='batch_norm_1'))
 
     word_input = Sequential()
     word_input_shape=(BATCH_SIZE, 1, VOCABULARY_SIZE)
@@ -73,21 +73,3 @@ def build_model():
     model.add(Activation('softmax', name='softmax_1'))
 
     return model
-
-
-# Call this on a model before training to tie the weights of the embedding layers
-def monkeypatch_model(model):
-    embed = model.layers[0].layers[1].layers[1].layer
-    unembed = model.layers[2].layer
-    print("Before patch: {} weights: {}".format(model, model.weights))
-    print("Embedding W[123,234]: {}".format(embed.weights[0][123,234]))
-    print("Unembedding W[234,123]: {}".format(unembed.weights[0][234,123]))
-    import pdb; pdb.set_trace()
-    unembed.W = tf.Variable(tf.transpose(embed.W))
-    unembed.b = tf.Variable(tf.transpose(embed.b))
-    unembed.weights[0] = unembed.W
-    unembed.weights[1] = unembed.b
-    print("After patch: {} weights: {}".format(model, model.weights))
-    print("Embedding W[123,234]: {}".format(embed.weights[0][123,234]))
-    print("Unembedding W[234,123]: {}".format(unembed.weights[0][234,123]))
-    import pdb; pdb.set_trace()
