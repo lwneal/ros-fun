@@ -31,9 +31,6 @@ def extract_visual_features(jpg_data, box):
 
 
 def example_generator(idx):
-    # Each generator produces a never-ending stream of input like this:
-    # <start> the cat on the mat <end> <start> the dog on the log <end> <start> the...
-    # Note that each of the BATCH_SIZE generators is completely separate
     # NOTE: Reset the LSTM state after each <end> token is output
     jpg_data, box, text = dataset_grefexp.random_generation_example()
     img_features = extract_visual_features(jpg_data, box)
@@ -41,9 +38,9 @@ def example_generator(idx):
     #print("Generator {}: {}".format(idx, nlp_api.onehot_to_words(words)))
     for word in words:
         yield np.concatenate((img_features, word))
+    # Right-pad the output with zeros, which will be masked out
     while True:
         empty = np.zeros(VOCABULARY_SIZE)
-        #end_token[3] = 1.0
         yield np.concatenate((img_features, empty))
 
 
@@ -51,9 +48,10 @@ def training_batch_generator(**kwargs):
     # Create BATCH_SIZE separate stateful generators
     generators = [example_generator(i) for i in range(BATCH_SIZE)]
 
-    # Given word n, predict word n+1
+    # Y is the target word to predict
     Y = np.array([next(g) for g in generators])
     while True:
+        # X is the last word that was output
         X = Y.copy()
         # Input is visual+word, output is word
         Y = np.array([next(g) for g in generators])
