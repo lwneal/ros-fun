@@ -85,9 +85,16 @@ def demonstrate(model, gen):
         print nlp_api.onehot_to_words(words[:,i])
 
 
+def print_weight_stats(model):
+    for w in model.get_weights():
+        print w.shape, w.min(), w.max()
+
+
 def train(model, **kwargs):
     start_time = time.time()
 
+    print("Weights min/max:")
+    print_weight_stats(model)
     iters = 20
     loss = 0
     for i in range(iters):

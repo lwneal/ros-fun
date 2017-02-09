@@ -61,7 +61,8 @@ def build_model():
     visual_input.add(BatchNormalization(batch_input_shape=(BATCH_SIZE, 1, IMAGE_FEATURE_SIZE), name='batch_norm_1'))
 
     dummy_model = Sequential()
-    unembed_layer = Dense(VOCABULARY_SIZE, input_shape=(1024,), name='embed_output')
+    from keras.regularizers import l2
+    unembed_layer = Dense(VOCABULARY_SIZE, input_shape=(1024,), W_regularizer=l2(.01), b_regularizer=l2(.01), name='embed_output')
     dummy_model.add(unembed_layer)
     embed_layer = TiedDense(1024, master_layer=unembed_layer, name='embed_input')
 
