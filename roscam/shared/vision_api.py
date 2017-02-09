@@ -16,7 +16,7 @@ from shared import util
 from frametalk_capnp import FrameMsg, VisionRequestType
 
 
-DEFAULT_ADDR = ('grapefruit.deeplearninggroup.com', 1237)
+DEFAULT_ADDR = ('localhost', 1237)
 
 
 def vision_request(jpg_data, request_type, addr=DEFAULT_ADDR):
