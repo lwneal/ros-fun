@@ -62,7 +62,7 @@ def build_model():
 
     dummy_model = Sequential()
     from keras.regularizers import l2
-    unembed_layer = Dense(VOCABULARY_SIZE, input_shape=(1024,), W_regularizer=l2(.01), b_regularizer=l2(.01), name='embed_output')
+    unembed_layer = Dense(VOCABULARY_SIZE, input_shape=(1024,), W_regularizer=l2(.01), bias=False, name='embed_output')
     dummy_model.add(unembed_layer)
     embed_layer = TiedDense(1024, master_layer=unembed_layer, name='embed_input')
 
