@@ -60,10 +60,14 @@ def build_model():
     visual_input = Sequential()
     visual_input.add(BatchNormalization(batch_input_shape=(BATCH_SIZE, 1, IMAGE_FEATURE_SIZE), name='batch_norm_1'))
 
+    dummy_model = Sequential()
+    unembed_layer = Dense(VOCABULARY_SIZE, input_shape=(1024,), name='embed_output')
+    dummy_model.add(unembed_layer)
+    embed_layer = TiedDense(1024, master_layer=unembed_layer, name='embed_input')
+
     word_input = Sequential()
     word_input_shape=(BATCH_SIZE, 1, VOCABULARY_SIZE)
     word_input.add(Masking(batch_input_shape=word_input_shape))
-    embed_layer = Dense(1024, name='embed_forward')
     word_input.add(TimeDistributed(embed_layer))
     word_input.add(Dropout(0.5))
 
@@ -71,7 +75,7 @@ def build_model():
     model.add(Merge([visual_input, word_input], mode='concat', concat_axis=2))
     model.add(LSTM(1024, name='lstm_1', return_sequences=True, stateful=True))
     model.add(Dropout(0.5))
-    model.add(TimeDistributed(TiedDense(VOCABULARY_SIZE, master_layer=embed_layer, name='embed_back')))
+    model.add(TimeDistributed(unembed_layer))
     model.add(Activation('softmax', name='softmax_1'))
 
     return model
