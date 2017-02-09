@@ -22,6 +22,8 @@ from networks import mao_net
 from networks.mao_net import BATCH_SIZE
 from interfaces.image_caption import VOCABULARY_SIZE
 
+# Train and predict on sequences of words up to this length
+WORDS = 16
 
 def extract_visual_features(jpg_data, box):
     pixels = util.decode_jpg(jpg_data)
@@ -33,6 +35,7 @@ def extract_visual_features(jpg_data, box):
 def example_generator(idx):
     # NOTE: Reset the LSTM state after each <end> token is output
     jpg_data, box, text = dataset_grefexp.random_generation_example()
+    text = 'now is the time for all good cows to come to the aid of their pasture'
     img_features = extract_visual_features(jpg_data, box)
     words = nlp_api.words_to_onehot(text)
     #print("Generator {}: {}".format(idx, nlp_api.onehot_to_words(words)))
@@ -68,13 +71,12 @@ def manywarm_to_onehot(X, offset=4101):
 
 
 def demonstrate(model, gen):
-    DEMO_LEN = 10
-    words = np.zeros((DEMO_LEN, BATCH_SIZE, image_caption.VOCABULARY_SIZE))
+    words = np.zeros((WORDS, BATCH_SIZE, image_caption.VOCABULARY_SIZE))
     X, _ = next(gen)
     visual = X[:,0,:4101]
     #words[0,:,:] = seed_words
     words[0,:,2] = 1.0
-    for i in range(1, DEMO_LEN):
+    for i in range(1, WORDS):
         visual_input = np.expand_dims(visual,axis=1)
         word_input = np.expand_dims(words[i-1], axis=1)
         words[i] = model.predict([visual_input, word_input])[:,0,:]
@@ -100,7 +102,7 @@ def train(model, **kwargs):
     for i in range(iters):
         model.reset_states()
         gen = training_batch_generator(**kwargs)
-        for i in range(10):
+        for i in range(WORDS):
             X, Y = next(gen)
             Y = np.expand_dims(Y, axis=1)
             visual = X[:,:,:4101]
