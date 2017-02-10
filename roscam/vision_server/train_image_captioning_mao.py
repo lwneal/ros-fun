@@ -19,7 +19,7 @@ import resnet
 from datasets import dataset_grefexp
 from interfaces import image_caption
 from networks import mao_net
-from networks.mao_net import BATCH_SIZE, WORDVEC_DIM
+from networks.mao_net import BATCH_SIZE, WORDVEC_DIM, IMAGE_FEATURE_SIZE, TIMESTEPS
 from interfaces.image_caption import VOCABULARY_SIZE
 
 # Train and predict on sequences of words up to this length
@@ -42,60 +42,51 @@ def example_generator(idx):
     words, indices = nlp_api.words_to_vec(text)
     #print("Generator {}: {}".format(idx, nlp_api.onehot_to_words(words)))
 
-    while True:
-        for word, onehot in zip(words, onehots):
-            model_input = np.concatenate((img_features, word))
-            yield model_input, onehot
+    X = np.zeros((TIMESTEPS, IMAGE_FEATURE_SIZE + WORDVEC_DIM))
+    Y = np.zeros((TIMESTEPS, VOCABULARY_SIZE))
 
-    """
-    # Right-pad the output with zeros, which will be masked out
+    for i in range(1, len(words)):
+        X[0] = 0
+        Y[0] = 0
+        X = np.roll(X, -1)
+        Y - np.roll(Y, -1)
+        X[-1] = np.concatenate((img_features, words[i-1]))
+        Y[-1] = onehots[i]
+        yield X, Y
+
+    # Empty, should be masked
     while True:
-        empty_onehot = np.zeros(VOCABULARY_SIZE)
-        img_features[:] = 0  # TODO: do we need to zero both visual and language input for masking to work?
-        model_input = np.concatenate((img_features, np.zeros(WORDVEC_DIM)))
-        yield model_input, empty_onehot
-    """
+        X = np.roll(X, -1)
+        Y - np.roll(Y, -1)
+        # If the network outputs "zucchinis zucchinis zucchinis" then masking is broken
+        Y[-1][-1] = 1.0
+        yield X, Y
 
 
 def training_batch_generator(**kwargs):
     # Create BATCH_SIZE separate stateful generators
     generators = [example_generator(i) for i in range(BATCH_SIZE)]
 
-    X1 = np.zeros((BATCH_SIZE, 1, 4101 + WORDVEC_DIM))
-    X2 = np.zeros((BATCH_SIZE, 1, 4101 + WORDVEC_DIM))
-    Y1 = np.zeros((BATCH_SIZE, 1, VOCABULARY_SIZE))
-    Y2 = np.zeros((BATCH_SIZE, 1, VOCABULARY_SIZE))
-    for i in range(len(generators)):
-        X2[i, 0], Y2[i, 0] = next(generators[i])
+    X = np.zeros((BATCH_SIZE, TIMESTEPS, IMAGE_FEATURE_SIZE + WORDVEC_DIM))
+    Y = np.zeros((BATCH_SIZE, TIMESTEPS, VOCABULARY_SIZE))
 
     while True:
-        X1 = X2.copy()
-        Y1 = Y2.copy()
         for i in range(len(generators)):
-            X2[i, 0], Y2[i, 0] = next(generators[i])
-        yield X1, Y2
+            X[i], Y[i] = next(generators[i])
+        yield X, Y[:,-1,:]
 
 
-def demonstrate(model, gen):
-    word_vectors = np.zeros((WORDS, BATCH_SIZE, WORDVEC_DIM))
-    word_idxs = np.zeros((WORDS, BATCH_SIZE), dtype=int)
-    X, _ = next(gen)
-    visual = X[:,0,:4101]
-    visual_input = np.expand_dims(visual,axis=1)
-
+def demonstrate(model, batch_gen):
     # Set first word to the start token
-    word_vectors[0] = nlp_api.words_to_vec(['000'])[0][0]
+    word_idxs = np.zeros((WORDS, BATCH_SIZE), dtype=int)
     word_idxs[0, :] = 2
 
     for i in range(1, WORDS):
-        word_input = np.expand_dims(word_vectors[i-1], axis=1)
-        model_output = model.predict([visual_input, word_input])[:,0,:]
-        # Get the output words indices and back-embed to word vectors
-        out_idx = np.argmax(model_output, axis=1)
-        # TODO: This is a hack, 1:-1 removes the start and end token
-        word_vectors[i] = nlp_api.indices_to_vec(list(out_idx))[0][1:-1]
-        word_idxs[i] = out_idx
-        #print("Predict: {} -> {}".format(np.argmax(words[i-1][0]), np.argmax(words[i][0])))
+        X, Y = next(batch_gen)
+        visual_input, word_input = X[:,:,:4101], X[:,:,4101:]
+        model_output = model.predict([visual_input, word_input])
+        for j in range(BATCH_SIZE):
+            word_idxs[i, j] = np.argmax(model_output[j])
 
     print("Demonstration on {} images:".format(BATCH_SIZE))
     for i in range(BATCH_SIZE):
@@ -112,17 +103,15 @@ def train(model, **kwargs):
 
     print("Weights min/max:")
     print_weight_stats(model)
-    iters = 32
+    iters = 4
     loss = 0
     for i in range(iters):
-        model.reset_states()
         gen = training_batch_generator(**kwargs)
         for i in range(WORDS):
             X, Y = next(gen)
             visual, language = X[:,:,:4101], X[:,:,4101:]
             loss += model.train_on_batch([visual, language], Y)
             #print("Train: {} -> {}".format(np.argmax(language[0,0,:]), np.argmax(Y[0,0,:])))
-    model.reset_states()
     loss /= iters
     print("Finished training for {} batches. Avg. loss: {}".format(iters, loss))
 

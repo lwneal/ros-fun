@@ -18,6 +18,7 @@ from shared.nlp_api import VOCABULARY_SIZE
 
 BATCH_SIZE=16
 IMAGE_FEATURE_SIZE = 4101
+TIMESTEPS = 12
 
 WORDVEC_DIM = 300
 
@@ -60,17 +61,17 @@ def build_model():
     # Input: The 4101-dim feature from extract_features, and the previous output word
 
     visual_input = Sequential()
-    visual_input.add(BatchNormalization(batch_input_shape=(BATCH_SIZE, 1, IMAGE_FEATURE_SIZE), name='batch_norm_1'))
+    visual_input.add(BatchNormalization(batch_input_shape=(BATCH_SIZE, TIMESTEPS, IMAGE_FEATURE_SIZE), name='batch_norm_1'))
 
     word_input = Sequential()
-    word_input_shape=(BATCH_SIZE, 1, WORDVEC_DIM)
+    word_input_shape=(BATCH_SIZE, TIMESTEPS, WORDVEC_DIM)
     word_input.add(Masking(batch_input_shape=word_input_shape))
 
     model = Sequential()
     model.add(Merge([visual_input, word_input], mode='concat', concat_axis=2))
-    model.add(LSTM(1024, name='lstm_1', return_sequences=True, stateful=True))
+    model.add(LSTM(1024, name='lstm_1'))
     model.add(Dropout(0.5))
-    model.add(TimeDistributed(Dense(VOCABULARY_SIZE, name='output', activation='linear')))
+    model.add(Dense(VOCABULARY_SIZE, name='output', activation='linear'))
     model.add(Activation('softmax', name='softmax_1'))
 
     return model
