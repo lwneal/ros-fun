@@ -60,3 +60,7 @@ def words_to_onehot(words, pad_to_length=None):
         return ret
     else:
         return indices_to_onehot(indices)
+
+# TODO: Should be a single network request
+def indices_to_vec(indices):
+    return words_to_vec(indices_to_words(indices))

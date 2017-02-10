@@ -19,7 +19,7 @@ import resnet
 from datasets import dataset_grefexp
 from interfaces import image_caption
 from networks import mao_net
-from networks.mao_net import BATCH_SIZE
+from networks.mao_net import BATCH_SIZE, WORDVEC_DIM
 from interfaces.image_caption import VOCABULARY_SIZE
 
 # Train and predict on sequences of words up to this length
@@ -35,56 +35,65 @@ def extract_visual_features(jpg_data, box):
 def example_generator(idx):
     # NOTE: Reset the LSTM state after each <end> token is output
     jpg_data, box, text = dataset_grefexp.random_generation_example()
-    text = 'now is the time for all good cows to come to the aid of their pasture'
     img_features = extract_visual_features(jpg_data, box)
-    words = nlp_api.words_to_onehot(text)
+
+    # TODO: faster
+    onehots = nlp_api.words_to_onehot(text)
+    words, indices = nlp_api.words_to_vec(text)
     #print("Generator {}: {}".format(idx, nlp_api.onehot_to_words(words)))
-    for word in words:
-        yield np.concatenate((img_features, word))
+
+    for word, onehot in zip(words, onehots):
+        model_input = np.concatenate((img_features, word))
+        yield model_input, onehot
+
     # Right-pad the output with zeros, which will be masked out
     while True:
-        empty = np.zeros(VOCABULARY_SIZE)
-        yield np.concatenate((img_features, empty))
+        empty_onehot = np.zeros(VOCABULARY_SIZE)
+        #img_features[:] = 0  # TODO: do we need to zero both visual and language input for masking to work?
+        model_input = np.concatenate((img_features, np.zeros(WORDVEC_DIM)))
+        yield model_input, empty_onehot
 
 
 def training_batch_generator(**kwargs):
     # Create BATCH_SIZE separate stateful generators
     generators = [example_generator(i) for i in range(BATCH_SIZE)]
 
-    # Y is the target word to predict
-    Y = np.array([next(g) for g in generators])
+    X1 = np.zeros((BATCH_SIZE, 1, 4101 + WORDVEC_DIM))
+    X2 = np.zeros((BATCH_SIZE, 1, 4101 + WORDVEC_DIM))
+    Y1 = np.zeros((BATCH_SIZE, 1, VOCABULARY_SIZE))
+    Y2 = np.zeros((BATCH_SIZE, 1, VOCABULARY_SIZE))
+    for i in range(len(generators)):
+        X2[i, 0], Y2[i, 0] = next(generators[i])
+
     while True:
-        # X is the last word that was output
-        X = Y.copy()
-        # Input is visual+word, output is word
-        Y = np.array([next(g) for g in generators])
-        yield np.expand_dims(X, axis=1), Y[:, 4101:]
-
-
-def manywarm_to_onehot(X, offset=4101):
-    # Squash the many-warm softmax output into a one-hot input
-    word_idx = np.argmax(X[:,offset:], axis=1)
-    X[:,offset:] = 0
-    for i in range(BATCH_SIZE):
-        X[i, offset + word_idx[i]] = 1.0
-    return X
+        X1 = X2.copy()
+        Y1 = Y2.copy()
+        for i in range(len(generators)):
+            X2[i, 0], Y2[i, 0] = next(generators[i])
+        yield X1, Y2
 
 
 def demonstrate(model, gen):
-    words = np.zeros((WORDS, BATCH_SIZE, image_caption.VOCABULARY_SIZE))
+    word_vectors = np.zeros((WORDS, BATCH_SIZE, WORDVEC_DIM))
+    word_idxs = np.zeros((WORDS, BATCH_SIZE), dtype=int)
     X, _ = next(gen)
     visual = X[:,0,:4101]
-    #words[0,:,:] = seed_words
-    words[0,:,2] = 1.0
+    visual_input = np.expand_dims(visual,axis=1)
+
+    word_vectors[0] = nlp_api.words_to_vec(['000'])[0][0]
     for i in range(1, WORDS):
-        visual_input = np.expand_dims(visual,axis=1)
-        word_input = np.expand_dims(words[i-1], axis=1)
-        words[i] = model.predict([visual_input, word_input])[:,0,:]
+        word_input = np.expand_dims(word_vectors[i-1], axis=1)
+        model_output = model.predict([visual_input, word_input])[:,0,:]
+        # Get the output words indices and back-embed to word vectors
+        out_idx = np.argmax(model_output, axis=1)
+        # TODO: This is a hack, 1:-1 removes the start and end token
+        word_vectors[i] = nlp_api.indices_to_vec(list(out_idx))[0][1:-1]
+        word_idxs[i] = out_idx
         #print("Predict: {} -> {}".format(np.argmax(words[i-1][0]), np.argmax(words[i][0])))
 
     print("Demonstration on {} images:".format(BATCH_SIZE))
     for i in range(BATCH_SIZE):
-        print nlp_api.onehot_to_words(words[:,i])
+        print nlp_api.indices_to_words(list(word_idxs[:,i]))
 
 
 def print_weight_stats(model):
@@ -104,9 +113,7 @@ def train(model, **kwargs):
         gen = training_batch_generator(**kwargs)
         for i in range(WORDS):
             X, Y = next(gen)
-            Y = np.expand_dims(Y, axis=1)
-            visual = X[:,:,:4101]
-            language = X[:,:,4101:]
+            visual, language = X[:,:,:4101], X[:,:,4101:]
             loss += model.train_on_batch([visual, language], Y)
             #print("Train: {} -> {}".format(np.argmax(language[0,0,:]), np.argmax(Y[0,0,:])))
     model.reset_states()
