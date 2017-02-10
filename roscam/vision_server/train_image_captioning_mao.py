@@ -42,16 +42,19 @@ def example_generator(idx):
     words, indices = nlp_api.words_to_vec(text)
     #print("Generator {}: {}".format(idx, nlp_api.onehot_to_words(words)))
 
-    for word, onehot in zip(words, onehots):
-        model_input = np.concatenate((img_features, word))
-        yield model_input, onehot
+    while True:
+        for word, onehot in zip(words, onehots):
+            model_input = np.concatenate((img_features, word))
+            yield model_input, onehot
 
+    """
     # Right-pad the output with zeros, which will be masked out
     while True:
         empty_onehot = np.zeros(VOCABULARY_SIZE)
-        #img_features[:] = 0  # TODO: do we need to zero both visual and language input for masking to work?
+        img_features[:] = 0  # TODO: do we need to zero both visual and language input for masking to work?
         model_input = np.concatenate((img_features, np.zeros(WORDVEC_DIM)))
         yield model_input, empty_onehot
+    """
 
 
 def training_batch_generator(**kwargs):
@@ -80,7 +83,10 @@ def demonstrate(model, gen):
     visual = X[:,0,:4101]
     visual_input = np.expand_dims(visual,axis=1)
 
+    # Set first word to the start token
     word_vectors[0] = nlp_api.words_to_vec(['000'])[0][0]
+    word_idxs[0, :] = 2
+
     for i in range(1, WORDS):
         word_input = np.expand_dims(word_vectors[i-1], axis=1)
         model_output = model.predict([visual_input, word_input])[:,0,:]
@@ -106,7 +112,7 @@ def train(model, **kwargs):
 
     print("Weights min/max:")
     print_weight_stats(model)
-    iters = 20
+    iters = 32
     loss = 0
     for i in range(iters):
         model.reset_states()

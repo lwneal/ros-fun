@@ -19,7 +19,7 @@ from shared.nlp_api import VOCABULARY_SIZE
 BATCH_SIZE=16
 IMAGE_FEATURE_SIZE = 4101
 
-WORDVEC_DIM = 50
+WORDVEC_DIM = 300
 
 
 class TiedDense(layers.Dense):
@@ -61,7 +61,6 @@ def build_model():
 
     visual_input = Sequential()
     visual_input.add(BatchNormalization(batch_input_shape=(BATCH_SIZE, 1, IMAGE_FEATURE_SIZE), name='batch_norm_1'))
-    visual_input.add(TimeDistributed(Dense(1024, activation='relu')))
 
     word_input = Sequential()
     word_input_shape=(BATCH_SIZE, 1, WORDVEC_DIM)

@@ -1,7 +1,8 @@
 import sys
 import numpy as np
 
-GLOVE_FILENAME = '/home/nealla/models/glove.6B.50d.txt'
+#GLOVE_FILENAME = '/home/nealla/models/glove.6B.50d.txt'
+GLOVE_FILENAME = '/home/nealla/models/glove.42B.300d.txt'
 START_TOKEN = '000'
 END_TOKEN = '001'
 UNKNOWN_TOKEN = 'stuff'
