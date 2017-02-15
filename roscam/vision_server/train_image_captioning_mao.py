@@ -96,7 +96,6 @@ def demonstrate(model):
 
         # Get the output words indices and back-embed to word vectors
         word_idxs[i] = np.argmax(model_output, axis=1)
-        import pdb; pdb.set_trace()
         word_vectors[i] = nlp_api.indices_to_vec(word_idxs[i])
 
     print("Demonstration on {} images:".format(BATCH_SIZE))
@@ -118,7 +117,7 @@ def train(model, **kwargs):
 
     print("Weights min/max:")
     print_weight_stats(model)
-    iters = 8
+    iters = 20
     loss = 0
     for i in range(iters):
         model.reset_states()
