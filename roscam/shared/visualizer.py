@@ -1,10 +1,20 @@
 from keras.models import Model
 
+
+def gather_layers(model):
+    if not hasattr(model, 'layers'):
+        return [model]
+    layers = []
+    for layer in model.layers:
+        layers.extend(gather_layers(layer))
+    return layers
+
+
 class Visualizer(object):
     def __init__(self, model):
         self.model = model
         self.int_models = []
-        for layer in model.layers:
+        for layer in gather_layers(model):
             self.int_models.append(Model(input=model.input, output=layer.output, name=layer.name))
 
     def run(self, X):

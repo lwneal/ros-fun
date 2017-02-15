@@ -38,6 +38,18 @@ def example_generator(idx):
     jpg_data, box, text = dataset_grefexp.random_generation_example()
     img_features = extract_visual_features(jpg_data, box)
 
+    # HACK for testing
+    idx = random.randint(0,4)
+    img_features[:] = 0
+    img_features[idx] = 1.
+    text = [
+        'Hey Jude, take a sad song and make it better.',
+        'Wearing a face that she keeps in a jar by the door',
+        'Living is easy with eyes closed, misunderstanding all you see',
+        "There's nowhere you can be that isn't where you're meant to be",
+        'And in the end, the love you take is equal to the love you make',
+    ][idx]
+
     # TODO: faster
     onehots = nlp_api.words_to_onehot(text)
     words, indices = nlp_api.words_to_vec(text)
@@ -74,9 +86,10 @@ def training_batch_generator(**kwargs):
         yield X1, Y2
 
 
-def demonstrate(model, gen):
+def demonstrate(model):
     word_vectors = np.zeros((WORDS, BATCH_SIZE, WORDVEC_DIM))
     word_idxs = np.zeros((WORDS, BATCH_SIZE), dtype=int)
+    gen = training_batch_generator()
     X, _ = next(gen)
     visual = X[:,0,:4101]
     visual_input = np.expand_dims(visual,axis=1)
@@ -85,15 +98,18 @@ def demonstrate(model, gen):
     word_vectors[0] = nlp_api.words_to_vec(['000'])[0][0]
     word_idxs[0, :] = 2
 
+
     for i in range(1, WORDS):
         word_input = np.expand_dims(word_vectors[i-1], axis=1)
         model_output = model.predict([visual_input, word_input])[:,0,:]
+
+        from keras import backend as K
+        lstm_state = K.get_session().run(model.layers[1].states[0].value())
+
         # Get the output words indices and back-embed to word vectors
-        out_idx = np.argmax(model_output, axis=1)
-        # TODO: This is a hack, 1:-1 removes the start and end token
-        word_vectors[i] = nlp_api.indices_to_vec(list(out_idx))[0][1:-1]
-        word_idxs[i] = out_idx
-        #print("Predict: {} -> {}".format(np.argmax(words[i-1][0]), np.argmax(words[i][0])))
+        word_idxs[i] = np.argmax(model_output, axis=1)
+        import pdb; pdb.set_trace()
+        word_vectors[i] = nlp_api.indices_to_vec(word_idxs[i])
 
     print("Demonstration on {} images:".format(BATCH_SIZE))
     for i in range(BATCH_SIZE):
@@ -114,7 +130,7 @@ def train(model, **kwargs):
 
     print("Weights min/max:")
     print_weight_stats(model)
-    iters = 32
+    iters = 8
     loss = 0
     for i in range(iters):
         model.reset_states()
@@ -128,7 +144,10 @@ def train(model, **kwargs):
     loss /= iters
     print("Finished training for {} batches. Avg. loss: {}".format(iters, loss))
 
-    demonstrate(model, gen)
+    demonstrate(model)
+    model.reset_states()
+    demonstrate(model)
+    model.reset_states()
 
     return {
         'start_time': start_time,
