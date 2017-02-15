@@ -63,4 +63,6 @@ def words_to_onehot(words, pad_to_length=None):
 
 # TODO: Should be a single network request
 def indices_to_vec(indices):
-    return words_to_vec(indices_to_words(indices))
+    padded_words, padded_indices = words_to_vec(indices_to_words(list(indices)))
+    return np.array(padded_words)[1:-1]
+    

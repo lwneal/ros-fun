@@ -65,12 +65,11 @@ def get_dimensionality():
 
 def vectorize(text):
     init()
-    word_vectors = [glove_dict[START_TOKEN]]
+    word_vectors = []
     for word in text_to_words(text):
         word = glove_dict.get(word, glove_dict[UNKNOWN_TOKEN])
         word_vectors.append(word)
-    word_vectors.append(glove_dict[END_TOKEN])
-    return word_vectors
+    return np.array(word_vectors)
 
 
 def text_to_idx(text):
