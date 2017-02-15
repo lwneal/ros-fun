@@ -20,5 +20,5 @@ class Visualizer(object):
     def run(self, X):
         for model in self.int_models:
             y = model.predict(X)
-            print("{: <20} shape {: <16}\tmean {: .4f}\tstd {: .4f}\tmin {: .4f}\tmax {: .4f}\tabs mean {: .4f}".format(
-                model.name, y.shape, y.mean(), y.std(), y.min(), y.max(), abs(y).mean()))
+            print("{: <18} shape {: <14}\tstd {: .4f}\tmin {: .4f}\tmax {: .4f}\tabs mean {: .4f}".format(
+                model.name, y.shape, y.std(), y.min(), y.max(), abs(y).mean()))
