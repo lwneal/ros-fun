@@ -19,7 +19,7 @@ from shared.nlp_api import VOCABULARY_SIZE
 BATCH_SIZE=16
 IMAGE_FEATURE_SIZE = 4101
 
-WORDVEC_DIM = 300
+WORDVEC_DIM = 50
 
 
 class TiedDense(layers.Dense):
@@ -59,18 +59,21 @@ def build_model():
     # As described in https://arxiv.org/abs/1511.02283
     # Input: The 4101-dim feature from extract_features, and the previous output word
 
+    """
     visual_input = Sequential()
-    visual_input.add(BatchNormalization(batch_input_shape=(BATCH_SIZE, 1, IMAGE_FEATURE_SIZE), name='batch_norm_1'))
+    visual_input_shape = (BATCH_SIZE, 1, IMAGE_FEATURE_SIZE)
+    visual_input.add(BatchNormalization(batch_input_shape=visual_input_shape, name='batch_norm_vis'))
 
     word_input = Sequential()
     word_input_shape=(BATCH_SIZE, 1, WORDVEC_DIM)
-    word_input.add(Masking(batch_input_shape=word_input_shape))
+    word_input.add(BatchNormalization(batch_input_shape=word_input_shape, name='batch_norm_word'))
 
-    model = Sequential()
     model.add(Merge([visual_input, word_input], mode='concat', concat_axis=2))
-    model.add(LSTM(1024, name='lstm_1', return_sequences=True, stateful=True))
-    model.add(Dropout(0.5))
-    model.add(TimeDistributed(Dense(VOCABULARY_SIZE, name='output', activation='linear')))
+    """
+    input_shape = (BATCH_SIZE, 1, IMAGE_FEATURE_SIZE + WORDVEC_DIM)
+    model = Sequential()
+    model.add(LSTM(1024, batch_input_shape=input_shape, name='lstm_1', return_sequences=True, stateful=True))
+    model.add(TimeDistributed(Dense(VOCABULARY_SIZE, name='fc_1')))
     model.add(Activation('softmax', name='softmax_1'))
 
     return model

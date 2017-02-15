@@ -37,11 +37,13 @@ def example_generator(idx):
     # NOTE: Reset the LSTM state after each <end> token is output
     jpg_data, box, text = dataset_grefexp.random_generation_example()
     img_features = extract_visual_features(jpg_data, box)
+    img_features = (img_features - img_features.mean()) / img_features.std()
 
     # TODO: faster
     onehots = nlp_api.words_to_onehot(text)
     words, indices = nlp_api.words_to_vec(text)
     #print("Generator {}: {}".format(idx, nlp_api.onehot_to_words(words)))
+    assert len(words) == len(onehots)
 
     # Repeat caption for up to WORDS timesteps
     while True:
@@ -74,19 +76,17 @@ def demonstrate(model):
     word_idxs = np.zeros((WORDS, BATCH_SIZE), dtype=int)
     gen = training_batch_generator()
     X, _ = next(gen)
-    visual = X[:,0,:4101]
-    visual_input = np.expand_dims(visual,axis=1)
+    visual_input = X[:,0,:4101]
 
     # Set first word to the start token
     word_vectors[0] = nlp_api.words_to_vec(['000'])[0][0]
     word_idxs[0, :] = 2
 
+    visualizer = Visualizer(model)
     for i in range(1, WORDS):
-        word_input = np.expand_dims(word_vectors[i-1], axis=1)
-        model_output = model.predict([visual_input, word_input])[:,0,:]
-
-        from keras import backend as K
-        lstm_state = K.get_session().run(model.layers[1].states[0].value())
+        visualizer.print_states()
+        X[:, 0, 4101:] = word_vectors[i-1]
+        model_output = model.predict(X)[:,0,:]
 
         # Get the output words indices and back-embed to word vectors
         word_idxs[i] = np.argmax(model_output, axis=1)
@@ -97,8 +97,7 @@ def demonstrate(model):
         print nlp_api.indices_to_words(list(word_idxs[:,i]))
     
     print("Visualizing activations")
-    visualizer = Visualizer(model)
-    visualizer.run([visual_input, word_input])
+    visualizer.run(X)
 
 
 def print_weight_stats(model):
@@ -109,15 +108,14 @@ def print_weight_stats(model):
 def train(model, **kwargs):
     start_time = time.time()
 
-    iters = 20
+    iters = 4
     loss = 0
     for i in range(iters):
         model.reset_states()
         gen = training_batch_generator(**kwargs)
         for i in range(WORDS):
             X, Y = next(gen)
-            visual, language = X[:,:,:4101], X[:,:,4101:]
-            loss += model.train_on_batch([visual, language], Y)
+            loss += model.train_on_batch(X, Y)
             #print("Train: {} -> {}".format(np.argmax(language[0,0,:]), np.argmax(Y[0,0,:])))
     model.reset_states()
     loss /= iters
