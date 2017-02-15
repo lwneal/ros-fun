@@ -109,8 +109,6 @@ def print_weight_stats(model):
 def train(model, **kwargs):
     start_time = time.time()
 
-    print("Weights min/max:")
-    print_weight_stats(model)
     iters = 20
     loss = 0
     for i in range(iters):
@@ -125,8 +123,6 @@ def train(model, **kwargs):
     loss /= iters
     print("Finished training for {} batches. Avg. loss: {}".format(iters, loss))
 
-    demonstrate(model)
-    model.reset_states()
     demonstrate(model)
     model.reset_states()
 
