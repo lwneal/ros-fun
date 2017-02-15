@@ -38,18 +38,6 @@ def example_generator(idx):
     jpg_data, box, text = dataset_grefexp.random_generation_example()
     img_features = extract_visual_features(jpg_data, box)
 
-    # HACK for testing
-    idx = random.randint(0,4)
-    img_features[:] = 0
-    img_features[idx] = 1.
-    text = [
-        'Hey Jude, take a sad song and make it better.',
-        'Wearing a face that she keeps in a jar by the door',
-        'Living is easy with eyes closed, misunderstanding all you see',
-        "There's nowhere you can be that isn't where you're meant to be",
-        'And in the end, the love you take is equal to the love you make',
-    ][idx]
-
     # TODO: faster
     onehots = nlp_api.words_to_onehot(text)
     words, indices = nlp_api.words_to_vec(text)
