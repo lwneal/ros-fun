@@ -15,6 +15,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from shared import util
 from shared import nlp_api
+from shared.visualizer import Visualizer
 import resnet
 from datasets import dataset_grefexp
 from interfaces import image_caption
@@ -42,19 +43,16 @@ def example_generator(idx):
     words, indices = nlp_api.words_to_vec(text)
     #print("Generator {}: {}".format(idx, nlp_api.onehot_to_words(words)))
 
-    while True:
-        for word, onehot in zip(words, onehots):
-            model_input = np.concatenate((img_features, word))
-            yield model_input, onehot
+    for word, onehot in zip(words, onehots):
+        model_input = np.concatenate((img_features, word))
+        yield model_input, onehot
 
-    """
     # Right-pad the output with zeros, which will be masked out
     while True:
         empty_onehot = np.zeros(VOCABULARY_SIZE)
         img_features[:] = 0  # TODO: do we need to zero both visual and language input for masking to work?
         model_input = np.concatenate((img_features, np.zeros(WORDVEC_DIM)))
         yield model_input, empty_onehot
-    """
 
 
 def training_batch_generator(**kwargs):
@@ -100,6 +98,10 @@ def demonstrate(model, gen):
     print("Demonstration on {} images:".format(BATCH_SIZE))
     for i in range(BATCH_SIZE):
         print nlp_api.indices_to_words(list(word_idxs[:,i]))
+    
+    print("Visualizing activations")
+    visualizer = Visualizer(model)
+    visualizer.run([visual_input, word_input])
 
 
 def print_weight_stats(model):
