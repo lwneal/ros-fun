@@ -73,7 +73,6 @@ def build_model():
     input_shape = (BATCH_SIZE, 1, IMAGE_FEATURE_SIZE + WORDVEC_DIM)
     model = Sequential()
     model.add(LSTM(1024, batch_input_shape=input_shape, name='lstm_1', return_sequences=True, stateful=True))
-    model.add(TimeDistributed(Dense(VOCABULARY_SIZE, name='fc_1')))
-    model.add(Activation('softmax', name='softmax_1'))
+    model.add(TimeDistributed(Dense(WORDVEC_DIM, name='fc_1', activation='linear')))
 
     return model
