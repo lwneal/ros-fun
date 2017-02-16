@@ -42,9 +42,6 @@ def example_generator(idx):
     # NOTE: Reset the LSTM state after each <end> token is output
     jpg_data, box, text = dataset_grefexp.random_generation_example()
     img_features = extract_visual_features(jpg_data, box)
-    img_features = (img_features - img_features.mean()) / img_features.std()
-
-    text = 'in the end the love you take is equal to the love you make'
 
     # TODO: faster
     onehots = nlp_api.words_to_onehot(text)
