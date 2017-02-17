@@ -29,7 +29,7 @@ from networks.mao_net import BATCH_SIZE, WORDVEC_DIM, IMAGE_FEATURE_SIZE
 from interfaces.image_caption import VOCABULARY_SIZE
 
 # Train and predict on sequences of words up to this length
-WORDS = 16
+WORDS = 12
 
 def extract_visual_features(jpg_data, box):
     pixels = util.decode_jpg(jpg_data)
@@ -39,72 +39,48 @@ def extract_visual_features(jpg_data, box):
 
 
 def example_generator(idx):
-    # NOTE: Reset the LSTM state after each <end> token is output
     jpg_data, box, text = dataset_grefexp.random_generation_example()
     img_features = extract_visual_features(jpg_data, box)
 
-    # TODO: faster
     onehots = nlp_api.words_to_onehot(text)
-    words, indices = nlp_api.words_to_vec(text)
-    #print("Generator {}: {}".format(idx, nlp_api.onehot_to_words(words)))
-    assert len(words) == len(onehots)
 
     # Repeat caption for up to WORDS timesteps
     while True:
-        for word, onehot in zip(words, onehots):
-            model_input = np.concatenate((img_features, word))
-            yield model_input, word
+        for onehot, nexthot in zip(onehots, onehots[1:]):
+            yield img_features, onehot, nexthot
 
 
 def training_batch_generator(**kwargs):
-    # Create BATCH_SIZE separate stateful generators
     generators = [example_generator(i) for i in range(BATCH_SIZE)]
 
-    X1 = np.zeros((BATCH_SIZE, 1, 4101 + WORDVEC_DIM))
-    X2 = np.zeros((BATCH_SIZE, 1, 4101 + WORDVEC_DIM))
-    Y1 = np.zeros((BATCH_SIZE, 1, WORDVEC_DIM))
-    Y2 = np.zeros((BATCH_SIZE, 1, WORDVEC_DIM))
-    for i in range(len(generators)):
-        X2[i, 0], Y2[i, 0] = next(generators[i])
-
+    X_img = np.zeros((BATCH_SIZE, 1, IMAGE_FEATURE_SIZE))
+    X_word = np.zeros((BATCH_SIZE, 1, VOCABULARY_SIZE))
+    Y = np.zeros((BATCH_SIZE, 1, VOCABULARY_SIZE))
     while True:
-        X1 = X2.copy()
-        Y1 = Y2.copy()
         for i in range(len(generators)):
-            X2[i, 0], Y2[i, 0] = next(generators[i])
-        yield X1, Y2
+            X_img[i], X_word[i], Y[i] = next(generators[i])
+        yield X_img, X_word, Y
 
 
 def demonstrate(model):
-    word_vectors = np.zeros((WORDS, BATCH_SIZE, WORDVEC_DIM))
-    word_idxs = np.zeros((WORDS, BATCH_SIZE), dtype=int)
     gen = training_batch_generator()
-    X, _ = next(gen)
-    visual_input = X[:,0,:4101]
+    x_img, x_word, y = next(gen)
+    words = np.zeros((WORDS, BATCH_SIZE, 1, VOCABULARY_SIZE))
 
-    # Set first word to the start token
-    word_vectors[0] = nlp_api.words_to_vec(['000'])[0][0]
-    word_idxs[0, :] = 2
+    words[0, :] = x_word
 
     visualizer = Visualizer(model)
     for i in range(1, WORDS):
-        X[:, 0, 4101:] = word_vectors[i-1]
-        model_output = model.predict(X)[:,0,:]
-
-        word_vectors[i] = model_output
-
-        word_idxs[i] = vectors_to_indices(model_output)
-        # Get the output words indices and back-embed to word vectors
-        #word_idxs[i] = np.argmax(model_output, axis=1)
-        #word_vectors[i] = nlp_api.indices_to_vec(word_idxs[i])
+        words[i,:,0,:] = model.predict([x_img, words[i-1]])[:,0,:]
 
     print("Model activations")
     visualizer.print_states()
-    visualizer.run(X)
+    visualizer.run([x_img, x_word])
 
     print("Demonstration on {} images:".format(BATCH_SIZE))
     for i in range(BATCH_SIZE):
-        print nlp_api.indices_to_words(list(word_idxs[:,i]))
+        indices = np.argmax(words[:, i, 0], axis=-1)
+        print nlp_api.indices_to_words(list(indices))
     
 
 def print_weight_stats(model):
@@ -133,20 +109,17 @@ def vectors_to_indices(vectors):
     indices = np.argmax(preds, axis=1)
     return indices
 
-def vectors_to_words(vectors):
-    indices = vectors_to_indices(vectors)
-    return [word_vector.idx_word[i] for i in indices]
 
 def train(model, **kwargs):
     start_time = time.time()
-    iters = 32
+    iters = 16
     loss = 0
     for i in range(iters):
         model.reset_states()
         gen = training_batch_generator(**kwargs)
         for i in range(WORDS):
-            X, Y = next(gen)
-            loss += model.train_on_batch(X, Y)
+            x_img, x_word, y = next(gen)
+            loss += model.train_on_batch([x_img, x_word], y)
     model.reset_states()
     loss /= iters
     print("Finished training for {} batches. Avg. loss: {}".format(iters, loss))

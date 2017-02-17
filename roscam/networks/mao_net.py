@@ -9,6 +9,7 @@ from keras.models import Model
 from keras.layers import Input
 from keras import layers
 from keras import backend as K
+import numpy as np
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -22,12 +23,10 @@ IMAGE_FEATURE_SIZE = 4101
 WORDVEC_DIM = 50
 
 
-class TiedDense(layers.Dense):
-    def __init__(self, output_dim, master_layer, init='glorot_uniform', activation='linear', weights=None,
-                 W_regularizer=None, b_regularizer=None, activity_regularizer=None,
-                 W_constraint=None, b_constraint=None, input_dim=None, **kwargs):
+class TiedTransposeDense(layers.Dense):
+    def __init__(self, output_dim, master_layer, **kwargs):
         self.master_layer = master_layer
-        super(TiedDense, self).__init__(output_dim, **kwargs)
+        super(TiedTransposeDense, self).__init__(output_dim, **kwargs)
 
     def build(self, input_shape):
         assert len(input_shape) >= 2
@@ -54,25 +53,48 @@ class TiedDense(layers.Dense):
             self.set_weights(self.initial_weights)
             del self.initial_weights
 
+        self.built = True
+
+
+from nlp_server import word_vector
+def load_glove_weights():
+    word_vector.init()
+    glove_weights = np.zeros((WORDVEC_DIM, VOCABULARY_SIZE))
+    for i in range(VOCABULARY_SIZE):
+        glove_weights[:, i] = word_vector.glove_dict[word_vector.idx_word[i]]
+    return glove_weights
+
 
 def build_model():
     # As described in https://arxiv.org/abs/1511.02283
     # Input: The 4101-dim feature from extract_features, and the previous output word
 
-    """
     visual_input = Sequential()
     visual_input_shape = (BATCH_SIZE, 1, IMAGE_FEATURE_SIZE)
-    visual_input.add(BatchNormalization(batch_input_shape=visual_input_shape, name='batch_norm_vis'))
+    visual_input.add(BatchNormalization(
+        batch_input_shape=visual_input_shape,
+        name='batch_norm_vis'))
 
     word_input = Sequential()
-    word_input_shape=(BATCH_SIZE, 1, WORDVEC_DIM)
-    word_input.add(BatchNormalization(batch_input_shape=word_input_shape, name='batch_norm_word'))
+    glove_weights = load_glove_weights()
+    bias = np.zeros((WORDVEC_DIM))
+    word_input_shape=(BATCH_SIZE, 1, VOCABULARY_SIZE)
+    word_input.add(TimeDistributed(Dense(
+        WORDVEC_DIM, 
+        weights=[glove_weights.transpose(), bias],
+        name='embed_in'),
+        batch_input_shape=word_input_shape))
 
-    model.add(Merge([visual_input, word_input], mode='concat', concat_axis=2))
-    """
-    input_shape = (BATCH_SIZE, 1, IMAGE_FEATURE_SIZE + WORDVEC_DIM)
     model = Sequential()
-    model.add(LSTM(1024, batch_input_shape=input_shape, name='lstm_1', return_sequences=True, stateful=True))
+    model.add(Merge([visual_input, word_input], mode='concat', concat_axis=2))
+    model.add(LSTM(1024, name='lstm_1', return_sequences=True, stateful=True))
     model.add(TimeDistributed(Dense(WORDVEC_DIM, name='fc_1', activation='linear')))
+
+    bias = np.zeros((VOCABULARY_SIZE))
+    model.add(TimeDistributed(Dense(
+        VOCABULARY_SIZE,
+        weights=[glove_weights, bias],
+        name='embed_out')))
+    model.add(Activation('softmax'))
 
     return model
