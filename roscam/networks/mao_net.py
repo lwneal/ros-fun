@@ -71,16 +71,18 @@ def build_model():
 
     visual_input = Sequential()
     visual_input_shape = (BATCH_SIZE, 1, IMAGE_FEATURE_SIZE)
-    visual_input.add(BatchNormalization(
-        batch_input_shape=visual_input_shape,
-        name='batch_norm_vis'))
+    # Embed visual down to a smaller size
+    visual_input.add(TimeDistributed(Dense(
+        WORDVEC_DIM,
+        name='visual_embed'),
+        batch_input_shape=visual_input_shape))
 
     word_input = Sequential()
     glove_weights = load_glove_weights()
     bias = np.zeros((WORDVEC_DIM))
     word_input_shape=(BATCH_SIZE, 1, VOCABULARY_SIZE)
     word_input.add(TimeDistributed(Dense(
-        WORDVEC_DIM, 
+        WORDVEC_DIM,
         weights=[glove_weights.transpose(), bias],
         name='embed_in'),
         batch_input_shape=word_input_shape))
@@ -88,7 +90,7 @@ def build_model():
     model = Sequential()
     model.add(Merge([visual_input, word_input], mode='concat', concat_axis=2))
     model.add(LSTM(1024, name='lstm_1', return_sequences=True, stateful=True))
-    model.add(TimeDistributed(Dense(WORDVEC_DIM, name='fc_1', activation='linear')))
+    model.add(TimeDistributed(Dense(WORDVEC_DIM, name='fc_1')))
 
     bias = np.zeros((VOCABULARY_SIZE))
     model.add(TimeDistributed(Dense(
