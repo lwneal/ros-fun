@@ -18,6 +18,7 @@ from shared import util
 from shared import nlp_api
 from datasets import dataset_grefexp
 from interfaces import image_caption
+from networks import mao_net
 
 
 def get_grefexp(key):
@@ -39,7 +40,22 @@ def get_validation_set():
         resnet_preds = resnet.run(pixels)
         x = image_caption.extract_features_from_preds(resnet_preds, width, height, box)
         x = np.expand_dims(x, axis=0)
+        x = np.expand_dims(x, axis=0)
         yield x, texts
+
+MAX_WORDS = 10
+
+def predict(model, x):
+    BATCH_SIZE = 16
+    onehot_words = np.zeros((MAX_WORDS, BATCH_SIZE, 1, mao_net.VOCABULARY_SIZE))
+    visual_input = np.zeros((BATCH_SIZE, 1, 4101))
+    visual_input[:] = x
+    # Set first word to start token
+    onehot_words[0,:,:,2] = 1.0
+    model.reset_states()
+    for i in range(1, MAX_WORDS):
+        onehot_words[i] = model.predict([visual_input, onehot_words[i-1]])
+    return onehot_words[:,0,0,:]
 
 
 def evaluate(model):
@@ -54,8 +70,8 @@ def evaluate(model):
 def compute_scores(model):
     score_list = []
     for x, reference_texts in get_validation_set():
-        preds = model.predict(x)
-        output_words = nlp_api.onehot_to_words(preds.reshape(preds.shape[1:]))
+        preds = predict(model, x)
+        output_words = nlp_api.onehot_to_words(preds)
         candidate = strip(output_words)
         references = [strip(r) for r in reference_texts]
 
