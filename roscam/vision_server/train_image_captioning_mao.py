@@ -42,6 +42,8 @@ def example_generator(idx):
     jpg_data, box, text = dataset_grefexp.random_generation_example()
     img_features = extract_visual_features(jpg_data, box)
 
+    img_features /= img_features.max()
+    text = text + ' 001'
     onehots = nlp_api.words_to_onehot(text)
 
     # Repeat caption for up to WORDS timesteps
