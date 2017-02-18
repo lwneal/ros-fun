@@ -25,11 +25,9 @@ import resnet
 from datasets import dataset_grefexp
 from interfaces import image_caption
 from networks import mao_net
-from networks.mao_net import BATCH_SIZE, WORDVEC_DIM, IMAGE_FEATURE_SIZE
+from networks.mao_net import BATCH_SIZE, WORDVEC_DIM, IMAGE_FEATURE_SIZE, MAX_WORDS
 from interfaces.image_caption import VOCABULARY_SIZE
 
-# Train and predict on sequences of words up to this length
-WORDS = 12
 
 def extract_visual_features(jpg_data, box):
     pixels = util.decode_jpg(jpg_data)
@@ -38,50 +36,57 @@ def extract_visual_features(jpg_data, box):
     return image_caption.extract_features_from_preds(preds, width, height, box)
 
 
-def example_generator(idx):
+def get_example():
+    x_img = np.zeros((MAX_WORDS, IMAGE_FEATURE_SIZE))
+    x_words = np.zeros((MAX_WORDS, VOCABULARY_SIZE))
+    y = np.zeros(VOCABULARY_SIZE)
+
     jpg_data, box, text = dataset_grefexp.random_generation_example()
+
+    text = 'the quick brown fox jumped over the lazy dog'
+
     img_features = extract_visual_features(jpg_data, box)
+    if img_features.max() > 0:
+        img_features /= img_features.max()
+    x_img[:,:] = img_features
 
-    img_features /= img_features.max()
-    text = text + ' 001'
-    onehots = nlp_api.words_to_onehot(text)
+    # TODO: Limit to MAX_WORDS
+    onehots = nlp_api.words_to_onehot(text + '001')
+    onehots = onehots[:MAX_WORDS]
 
-    # Repeat caption for up to WORDS timesteps
-    while True:
-        for onehot, nexthot in zip(onehots, onehots[1:]):
-            yield img_features, onehot, nexthot
+    # Randomly offset into some part of the sentence
+    offset = random.randint(0, len(onehots) - 1)
+
+    x_words[MAX_WORDS - offset:] = onehots[:offset]
+    y = onehots[offset]
+
+    return x_img, x_words, y
 
 
-def training_batch_generator(**kwargs):
-    generators = [example_generator(i) for i in range(BATCH_SIZE)]
-
-    X_img = np.zeros((BATCH_SIZE, 1, IMAGE_FEATURE_SIZE))
-    X_word = np.zeros((BATCH_SIZE, 1, VOCABULARY_SIZE))
-    Y = np.zeros((BATCH_SIZE, 1, VOCABULARY_SIZE))
-    while True:
-        for i in range(len(generators)):
-            X_img[i], X_word[i], Y[i] = next(generators[i])
-        yield X_img, X_word, Y
+def get_batch(**kwargs):
+    X_img = np.zeros((BATCH_SIZE, MAX_WORDS, IMAGE_FEATURE_SIZE))
+    X_word = np.zeros((BATCH_SIZE, MAX_WORDS, VOCABULARY_SIZE))
+    Y = np.zeros((BATCH_SIZE, VOCABULARY_SIZE))
+    for i in range(BATCH_SIZE):
+        X_img[i], X_word[i], Y[i] = get_example()
+    return X_img, X_word, Y
 
 
 def demonstrate(model):
-    gen = training_batch_generator()
-    x_img, x_word, y = next(gen)
-    words = np.zeros((WORDS, BATCH_SIZE, 1, VOCABULARY_SIZE))
-
-    words[0, :] = x_word
+    X_img, X_word, Y = get_batch()
 
     visualizer = Visualizer(model)
-    for i in range(1, WORDS):
-        words[i,:,0,:] = model.predict([x_img, words[i-1]])[:,0,:]
+    for i in range(1, MAX_WORDS):
+        word = model.predict([X_img, X_word])
+        X_word = np.roll(X_word, 1, axis=1)
+        X_word[:,-1] = word
 
     print("Model activations")
-    visualizer.print_states()
-    visualizer.run([x_img, x_word])
+    visualizer.run([X_img, X_word])
 
     print("Demonstration on {} images:".format(BATCH_SIZE))
     for i in range(BATCH_SIZE):
-        indices = np.argmax(words[:, i, 0], axis=-1)
+        indices = np.argmax(X_word[i], axis=-1)
         print nlp_api.indices_to_words(list(indices))
     
 
@@ -90,44 +95,17 @@ def print_weight_stats(model):
         print w.shape, w.min(), w.max()
 
 
-glove_model = None
-def load_glove_model():
-    global glove_model
-    word_vector.init()
-    glove_weights = np.zeros((WORDVEC_DIM, VOCABULARY_SIZE))
-    for i in range(VOCABULARY_SIZE):
-        glove_weights[:, i] = word_vector.glove_dict[word_vector.idx_word[i]]
-    glove_model = models.Sequential()
-    bias = np.zeros(VOCABULARY_SIZE)
-    glove_model.add(layers.Dense(input_dim=WORDVEC_DIM, output_dim=VOCABULARY_SIZE, weights=[glove_weights, bias]))
-
-
-def vectors_to_indices(vectors):
-    if glove_model is None:
-        load_glove_model()
-    wordcount, dim = vectors.shape
-    assert dim == WORDVEC_DIM
-    preds = glove_model.predict(vectors)
-    indices = np.argmax(preds, axis=1)
-    return indices
-
-
 def train(model, **kwargs):
     start_time = time.time()
-    iters = 16
+    iters = 64
     loss = 0
     for i in range(iters):
-        model.reset_states()
-        gen = training_batch_generator(**kwargs)
-        for i in range(WORDS):
-            x_img, x_word, y = next(gen)
-            loss += model.train_on_batch([x_img, x_word], y)
-    model.reset_states()
+        X_img, X_word, Y = get_batch(**kwargs)
+        loss += model.train_on_batch([X_img, X_word], Y)
     loss /= iters
     print("Finished training for {} batches. Avg. loss: {}".format(iters, loss))
 
     demonstrate(model)
-    model.reset_states()
 
     return {
         'start_time': start_time,
