@@ -43,16 +43,16 @@ def get_example():
 
     jpg_data, box, text = dataset_grefexp.random_generation_example()
 
-    text = 'the quick brown fox jumped over the lazy dog'
-
     img_features = extract_visual_features(jpg_data, box)
     if img_features.max() > 0:
         img_features /= img_features.max()
     x_img[:,:] = img_features
 
     # TODO: Limit to MAX_WORDS
-    onehots = nlp_api.words_to_onehot(text + '001')
-    onehots = onehots[:MAX_WORDS]
+    onehots = nlp_api.words_to_onehot(text + ' 001 ')
+    if len(onehots) > MAX_WORDS:
+        idx = random.randint(0, len(onehots) - MAX_WORDS)
+        onehots = onehots[idx:idx+MAX_WORDS]
 
     # Randomly offset into some part of the sentence
     offset = random.randint(0, len(onehots) - 1)
@@ -72,13 +72,19 @@ def get_batch(**kwargs):
     return X_img, X_word, Y
 
 
-def demonstrate(model):
+def demonstrate(model, all_zeros=False):
     X_img, X_word, Y = get_batch()
 
+    if all_zeros:
+        # Set all sentences to only the start token
+        X_word[:,:MAX_WORDS-1] = 0
+        X_word[:,MAX_WORDS-1,2] = 1.0
+
     visualizer = Visualizer(model)
-    for i in range(1, MAX_WORDS):
+    # Given some words, generate some more words
+    for i in range(1, MAX_WORDS - 1):
         word = model.predict([X_img, X_word])
-        X_word = np.roll(X_word, 1, axis=1)
+        X_word = np.roll(X_word, -1, axis=1)
         X_word[:,-1] = word
 
     print("Model activations")
@@ -105,7 +111,10 @@ def train(model, **kwargs):
     loss /= iters
     print("Finished training for {} batches. Avg. loss: {}".format(iters, loss))
 
+    print("Demonstration from mid-sentence")
     demonstrate(model)
+    print("Demonstration from start token")
+    demonstrate(model, all_zeros=True)
 
     return {
         'start_time': start_time,

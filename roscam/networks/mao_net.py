@@ -90,12 +90,10 @@ def build_model():
     model = Sequential()
     model.add(Merge([visual_input, word_input], mode='concat', concat_axis=-1))
     model.add(LSTM(1024, name='lstm_1', return_sequences=False))
-    model.add(Dense(WORDVEC_DIM, name='fc_1'))
 
     bias = np.zeros((VOCABULARY_SIZE))
     model.add(Dense(
         VOCABULARY_SIZE,
-        weights=[glove_weights, bias],
         name='embed_out'))
     model.add(Activation('softmax'))
 
