@@ -1,8 +1,10 @@
+import re
+import string
 import sys
 import numpy as np
 
-#GLOVE_FILENAME = '/home/nealla/models/glove.6B.50d.txt'
-GLOVE_FILENAME = '/home/nealla/models/glove.6B.300d.txt'
+GLOVE_FILENAME = '/home/nealla/models/glove.6B.50d.txt'
+#GLOVE_FILENAME = '/home/nealla/models/glove.6B.300d.txt'
 START_TOKEN = '000'
 END_TOKEN = '001'
 UNKNOWN_TOKEN = 'stuff'
@@ -12,16 +14,16 @@ word_idx = {}
 idx_word = {}
 
 
-def init():
+def init(vocab_filename='nlp_server/vocabulary.txt'):
     global glove_dict
     global word_idx
     global idx_word
     if glove_dict is None:
         glove_dict = load_glove_vectors(GLOVE_FILENAME)
-        word_idx, idx_word = read_vocabulary()
+        word_idx, idx_word = read_vocabulary(vocab_filename)
 
 
-def read_vocabulary(filename='nlp_server/vocabulary.txt'):
+def read_vocabulary(filename):
     word_idx = {}
     idx_word = {}
     i = 0
@@ -31,6 +33,10 @@ def read_vocabulary(filename='nlp_server/vocabulary.txt'):
         i += 1
     print("Loaded vocabulary of {} words".format(len(word_idx)))
     return word_idx, idx_word
+
+
+def vocabulary_len():
+    return len(word_idx)
 
 
 def load_glove_vectors(filename, scale_factor=1.0):
@@ -84,8 +90,6 @@ def indices_to_words(indices):
     return words
 
 
-import re
-import string
 pattern = re.compile('[\W_]+')
 def text_to_words(text):
     text = pattern.sub(' ', text).lower()
