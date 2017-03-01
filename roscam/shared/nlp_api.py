@@ -37,6 +37,7 @@ def onehot_to_indices(onehot):
 
 def indices_to_words(indices):
     URL = 'http://{}:8010/indices_to_words'.format(HOSTNAME)
+    indices = list(indices)
     indices_text = json.dumps(indices)
     r = requests.get(URL, data = {'indices': indices_text})
     words = r.text

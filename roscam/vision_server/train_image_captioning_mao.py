@@ -38,34 +38,35 @@ def extract_visual_features(jpg_data, box):
 
 def get_example():
     x_img = np.zeros((MAX_WORDS, IMAGE_FEATURE_SIZE))
-    x_words = np.zeros((MAX_WORDS, VOCABULARY_SIZE))
+    x_words = np.zeros((MAX_WORDS,), dtype=int)
     y = np.zeros(VOCABULARY_SIZE)
 
     jpg_data, box, text = dataset_grefexp.random_generation_example()
 
+    # HACK: zero out image features, use language only
+    """
     img_features = extract_visual_features(jpg_data, box)
     if img_features.max() > 0:
         img_features /= img_features.max()
     x_img[:,:] = img_features
+    """
 
-    # TODO: Limit to MAX_WORDS
-    onehots = nlp_api.words_to_onehot(text + ' 001 ')
-    if len(onehots) > MAX_WORDS:
-        idx = random.randint(0, len(onehots) - MAX_WORDS)
-        onehots = onehots[idx:idx+MAX_WORDS]
-
-    # Randomly offset into some part of the sentence
-    offset = random.randint(0, len(onehots) - 1)
-
-    x_words[MAX_WORDS - offset:] = onehots[:offset]
-    y = onehots[offset]
-
+    # Train on one word in the sentence
+    _, indices = nlp_api.words_to_vec(text)
+    end_idx = random.randint(1, len(indices) - 1)
+    start_idx = max(0, end_idx - MAX_WORDS)
+    word_count = end_idx - start_idx
+    # Input is a sequence of integers
+    x_words[-word_count:] = indices[start_idx: end_idx]
+    target_word = indices[end_idx]
+    # Output is a one-hot vector
+    y[target_word] = 1.0
     return x_img, x_words, y
 
 
 def get_batch(**kwargs):
     X_img = np.zeros((BATCH_SIZE, MAX_WORDS, IMAGE_FEATURE_SIZE))
-    X_word = np.zeros((BATCH_SIZE, MAX_WORDS, VOCABULARY_SIZE))
+    X_word = np.zeros((BATCH_SIZE, MAX_WORDS), dtype=int)
     Y = np.zeros((BATCH_SIZE, VOCABULARY_SIZE))
     for i in range(BATCH_SIZE):
         X_img[i], X_word[i], Y[i] = get_example()
@@ -76,24 +77,23 @@ def demonstrate(model, all_zeros=False):
     X_img, X_word, Y = get_batch()
 
     if all_zeros:
-        # Set all sentences to only the start token
-        X_word[:,:MAX_WORDS-1] = 0
-        X_word[:,MAX_WORDS-1,2] = 1.0
+        X_word[:,:] = 0
+        X_word[:,-1] = 2  # START_TOKEN_IDX
 
     visualizer = Visualizer(model)
     # Given some words, generate some more words
-    for i in range(1, MAX_WORDS - 1):
-        word = model.predict([X_img, X_word])
+    for i in range(0, MAX_WORDS - 1):
+        next_word = model.predict(X_word)
         X_word = np.roll(X_word, -1, axis=1)
-        X_word[:,-1] = word
+        X_word[:,-1] = np.argmax(next_word, axis=1)
 
     print("Model activations")
-    visualizer.run([X_img, X_word])
+    #visualizer.run([X_img, X_word])
+    visualizer.run(X_word)
 
     print("Demonstration on {} images:".format(BATCH_SIZE))
     for i in range(BATCH_SIZE):
-        indices = np.argmax(X_word[i], axis=-1)
-        print nlp_api.indices_to_words(list(indices))
+        print nlp_api.indices_to_words(X_word[i])
     
 
 def print_weight_stats(model):
@@ -107,7 +107,7 @@ def train(model, **kwargs):
     loss = 0
     for i in range(iters):
         X_img, X_word, Y = get_batch(**kwargs)
-        loss += model.train_on_batch([X_img, X_word], Y)
+        loss += model.train_on_batch(X_word, Y)
     loss /= iters
     print("Finished training for {} batches. Avg. loss: {}".format(iters, loss))
 
@@ -141,9 +141,18 @@ def save_training_info(info_filename, info, model_filename):
         fp.write(json.dumps(data, indent=2))
 
 
+def build_model():
+    model = models.Sequential()
+    model.add(layers.Embedding(VOCABULARY_SIZE, 300))
+    model.add(layers.LSTM(1024))
+    model.add(layers.Dense(VOCABULARY_SIZE, activation='softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=.001)
+    return model
+
+
 if __name__ == '__main__':
     model_filename = sys.argv[1]
-    model = mao_net.build_model()
+    model = build_model()
     if os.path.exists(model_filename):
         from shared.serialization import load_weights
         load_weights(model, model_filename)
