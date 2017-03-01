@@ -23,7 +23,7 @@ from networks import mao_net
 
 def get_grefexp(key):
     grefexp, anno, img_meta, jpg_data = dataset_grefexp.get_annotation_for_key(key)
-    x0, width, y0, height = anno['bbox']
+    x0, y0, width, height = anno['bbox']
     box = (x0, x0 + width, y0, y0 + height)
     texts = [refexp['raw'] for refexp in grefexp['refexps']]
     return jpg_data, img_meta['width'], img_meta['height'], box, texts
