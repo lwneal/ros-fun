@@ -43,13 +43,10 @@ def get_example():
 
     jpg_data, box, text = dataset_grefexp.random_generation_example()
 
-    # HACK: zero out image features, use language only
-    """
     img_features = extract_visual_features(jpg_data, box)
     if img_features.max() > 0:
         img_features /= img_features.max()
     x_img[:,:] = img_features
-    """
 
     # Train on one word in the sentence
     _, indices = nlp_api.words_to_vec(text)
@@ -83,13 +80,14 @@ def demonstrate(model, all_zeros=False):
     visualizer = Visualizer(model)
     # Given some words, generate some more words
     for i in range(0, MAX_WORDS - 1):
-        next_word = model.predict(X_word)
+        next_word = model.predict([X_img, X_word])
+        #next_word = model.predict(X_word)
         X_word = np.roll(X_word, -1, axis=1)
         X_word[:,-1] = np.argmax(next_word, axis=1)
 
     print("Model activations")
-    #visualizer.run([X_img, X_word])
-    visualizer.run(X_word)
+    visualizer.run([X_img, X_word])
+    #visualizer.run(X_word)
 
     print("Demonstration on {} images:".format(BATCH_SIZE))
     for i in range(BATCH_SIZE):
@@ -107,7 +105,8 @@ def train(model, **kwargs):
     loss = 0
     for i in range(iters):
         X_img, X_word, Y = get_batch(**kwargs)
-        loss += model.train_on_batch(X_word, Y)
+        loss += model.train_on_batch([X_img, X_word], Y)
+        #loss += model.train_on_batch(X_word, Y)
     loss /= iters
     print("Finished training for {} batches. Avg. loss: {}".format(iters, loss))
 
@@ -141,18 +140,9 @@ def save_training_info(info_filename, info, model_filename):
         fp.write(json.dumps(data, indent=2))
 
 
-def build_model():
-    model = models.Sequential()
-    model.add(layers.Embedding(VOCABULARY_SIZE, 300))
-    model.add(layers.LSTM(1024))
-    model.add(layers.Dense(VOCABULARY_SIZE, activation='softmax'))
-    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=.001)
-    return model
-
-
 if __name__ == '__main__':
     model_filename = sys.argv[1]
-    model = build_model()
+    model = mao_net.build_model()
     if os.path.exists(model_filename):
         from shared.serialization import load_weights
         load_weights(model, model_filename)

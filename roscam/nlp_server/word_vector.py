@@ -14,7 +14,7 @@ word_idx = {}
 idx_word = {}
 
 
-def init(vocab_filename='nlp_server/vocabulary.txt'):
+def init(vocab_filename='nlp_server/good_vocabulary.txt'):
     global glove_dict
     global word_idx
     global idx_word

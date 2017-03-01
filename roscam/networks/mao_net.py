@@ -19,8 +19,8 @@ from shared.nlp_api import VOCABULARY_SIZE
 
 BATCH_SIZE=16
 IMAGE_FEATURE_SIZE = 4101
-MAX_WORDS = 10
-WORDVEC_DIM = 300
+MAX_WORDS = 6
+WORDVEC_DIM = 100
 
 
 class TiedTransposeDense(layers.Dense):
@@ -69,15 +69,18 @@ def build_model():
     # As described in https://arxiv.org/abs/1511.02283
     # Input: The 4101-dim feature from extract_features, and the previous output word
 
+    # Hyperparameter: 
+    ALPHA = 0.5
+
     visual_input = Sequential()
-    visual_input_shape = (BATCH_SIZE, MAX_WORDS, IMAGE_FEATURE_SIZE)
     # Embed visual down to a smaller size
     visual_input.add(TimeDistributed(Dense(
-        WORDVEC_DIM,
+        int(WORDVEC_DIM * ALPHA),
         name='visual_embed'),
-        batch_input_shape=visual_input_shape))
+        batch_input_shape=(None, MAX_WORDS, IMAGE_FEATURE_SIZE)))
 
     word_input = Sequential()
+    """
     glove_weights = load_glove_weights()
     bias = np.zeros((WORDVEC_DIM))
     word_input_shape=(BATCH_SIZE, MAX_WORDS, VOCABULARY_SIZE)
@@ -86,15 +89,20 @@ def build_model():
         weights=[glove_weights.transpose(), bias],
         name='embed_in'),
         batch_input_shape=word_input_shape))
+    """
+    word_input.add(layers.Embedding(VOCABULARY_SIZE, WORDVEC_DIM, input_length=MAX_WORDS))
 
     model = Sequential()
-    model.add(Merge([visual_input, word_input], mode='concat', concat_axis=-1))
+    model.add(Merge([visual_input, word_input], mode='concat', concat_axis=2))
+
+    # Combined embedding
+    model.add(TimeDistributed(Dense(512, activation='tanh', name='joint_embed')))
+        
     model.add(LSTM(1024, name='lstm_1', return_sequences=False))
 
-    bias = np.zeros((VOCABULARY_SIZE))
     model.add(Dense(
         VOCABULARY_SIZE,
+        activation='softmax',
         name='embed_out'))
-    model.add(Activation('softmax'))
 
     return model

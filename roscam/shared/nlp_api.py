@@ -3,7 +3,8 @@ import requests
 import pickle
 import numpy as np
 
-VOCABULARY_SIZE = 28519  # TODO: get this programaticly
+VOCABULARY_SIZE = 4633
+#VOCABULARY_SIZE = 28519  # TODO: get this programaticly
 START_TOKEN = '000'
 END_TOKEN = '001'
 UNKNOWN_TOKEN = 'stuff'
