@@ -43,19 +43,39 @@ def get_validation_set():
         x = np.expand_dims(x, axis=0)
         yield x, texts
 
-MAX_WORDS = 10
+MAX_WORDS = 6
 
 def predict(model, x):
-    BATCH_SIZE = 16
-    onehot_words = np.zeros((MAX_WORDS, BATCH_SIZE, 1, mao_net.VOCABULARY_SIZE))
-    visual_input = np.zeros((BATCH_SIZE, 1, 4101))
+    #BATCH_SIZE = 1
+    visual_input = np.zeros((1, MAX_WORDS, 4101))
     visual_input[:] = x
+    word_indices = np.zeros((1, MAX_WORDS,), dtype=int)
     # Set first word to start token
-    onehot_words[0,:,:,2] = 1.0
-    model.reset_states()
-    for i in range(1, MAX_WORDS):
-        onehot_words[i] = model.predict([visual_input, onehot_words[i-1]])
-    return onehot_words[:,0,0,:]
+    word_indices[:,-1] = 2
+    for i in range(0, MAX_WORDS - 1):
+        next_word = model.predict([visual_input, word_indices])
+        word_indices = np.roll(word_indices, -1, axis=1)
+        word_indices[:,-1] = np.argmax(next_word, axis=1)
+    return word_indices[0,:]
+
+def demonstrate(model, all_zeros=False):
+    X_img, X_word, Y = get_batch()
+    if all_zeros:
+        X_word[:,:] = 0
+        X_word[:,-1] = 2  # START_TOKEN_IDX
+    visualizer = Visualizer(model)
+    # Given some words, generate some more words
+    for i in range(0, MAX_WORDS - 1):
+        next_word = model.predict([X_img, X_word])
+        #next_word = model.predict(X_word)
+        X_word = np.roll(X_word, -1, axis=1)
+        X_word[:,-1] = np.argmax(next_word, axis=1)
+    print("Model activations")
+    visualizer.run([X_img, X_word])
+    #visualizer.run(X_word)
+    print("Demonstration on {} images:".format(BATCH_SIZE))
+    for i in range(BATCH_SIZE):
+        print nlp_api.indices_to_words(X_word[i])
 
 
 def evaluate(model):
@@ -71,7 +91,8 @@ def compute_scores(model):
     score_list = []
     for x, reference_texts in get_validation_set():
         preds = predict(model, x)
-        output_words = nlp_api.onehot_to_words(preds)
+        #output_words = nlp_api.onehot_to_words(preds)
+        output_words = nlp_api.indices_to_words(preds)
         candidate = strip(output_words)
         references = [strip(r) for r in reference_texts]
 

@@ -53,6 +53,7 @@ def get_example():
     end_idx = random.randint(1, len(indices) - 1)
     start_idx = max(0, end_idx - MAX_WORDS)
     word_count = end_idx - start_idx
+
     # Input is a sequence of integers
     x_words[-word_count:] = indices[start_idx: end_idx]
     target_word = indices[end_idx]
@@ -79,15 +80,13 @@ def demonstrate(model, all_zeros=False):
 
     visualizer = Visualizer(model)
     # Given some words, generate some more words
-    for i in range(0, MAX_WORDS - 1):
+    for i in range(0, MAX_WORDS * 2):
         next_word = model.predict([X_img, X_word])
-        #next_word = model.predict(X_word)
         X_word = np.roll(X_word, -1, axis=1)
         X_word[:,-1] = np.argmax(next_word, axis=1)
 
     print("Model activations")
     visualizer.run([X_img, X_word])
-    #visualizer.run(X_word)
 
     print("Demonstration on {} images:".format(BATCH_SIZE))
     for i in range(BATCH_SIZE):
@@ -106,7 +105,6 @@ def train(model, **kwargs):
     for i in range(iters):
         X_img, X_word, Y = get_batch(**kwargs)
         loss += model.train_on_batch([X_img, X_word], Y)
-        #loss += model.train_on_batch(X_word, Y)
     loss /= iters
     print("Finished training for {} batches. Avg. loss: {}".format(iters, loss))
 

@@ -72,6 +72,7 @@ def build_model():
     # Hyperparameter: 
     ALPHA = 0.5
 
+    MAX_WORDS=None
     visual_input = Sequential()
     # Embed visual down to a smaller size
     visual_input.add(TimeDistributed(Dense(
