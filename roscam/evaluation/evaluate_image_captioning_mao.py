@@ -30,9 +30,8 @@ def get_grefexp(key):
 
 
 def get_validation_set():
-    print("HACK: validating on TRAINING data")
-    keys = dataset_grefexp.get_all_keys(reference_key='dataset_grefexp_train')
-    print("Loaded {} TRAINING examples".format(len(keys)))
+    keys = dataset_grefexp.get_all_keys()
+    print("Loaded {} validation examples".format(len(keys)))
     for key in keys:
         jpg_data, width, height, box, texts = get_grefexp(key)
         from vision_server import resnet
