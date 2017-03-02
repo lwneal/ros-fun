@@ -19,7 +19,7 @@ from shared.nlp_api import VOCABULARY_SIZE
 
 BATCH_SIZE=16
 IMAGE_FEATURE_SIZE = 4101
-MAX_WORDS = 6
+MAX_WORDS = 8
 WORDVEC_DIM = 100
 
 
@@ -72,26 +72,15 @@ def build_model():
     # Hyperparameter: 
     ALPHA = 0.5
 
-    MAX_WORDS=None
     visual_input = Sequential()
     # Embed visual down to a smaller size
     visual_input.add(TimeDistributed(Dense(
         int(WORDVEC_DIM * ALPHA),
         name='visual_embed'),
-        batch_input_shape=(None, MAX_WORDS, IMAGE_FEATURE_SIZE)))
+        batch_input_shape=(None, None, IMAGE_FEATURE_SIZE)))
 
     word_input = Sequential()
-    """
-    glove_weights = load_glove_weights()
-    bias = np.zeros((WORDVEC_DIM))
-    word_input_shape=(BATCH_SIZE, MAX_WORDS, VOCABULARY_SIZE)
-    word_input.add(TimeDistributed(Dense(
-        WORDVEC_DIM,
-        weights=[glove_weights.transpose(), bias],
-        name='embed_in'),
-        batch_input_shape=word_input_shape))
-    """
-    word_input.add(layers.Embedding(VOCABULARY_SIZE, WORDVEC_DIM, input_length=MAX_WORDS))
+    word_input.add(layers.Embedding(VOCABULARY_SIZE, WORDVEC_DIM, dropout=.5))
 
     model = Sequential()
     model.add(Merge([visual_input, word_input], mode='concat', concat_axis=2))
@@ -100,6 +89,7 @@ def build_model():
     model.add(TimeDistributed(Dense(512, activation='tanh', name='joint_embed')))
         
     model.add(LSTM(1024, name='lstm_1', return_sequences=False))
+    model.add(layers.Dropout(.5))
 
     model.add(Dense(
         VOCABULARY_SIZE,
