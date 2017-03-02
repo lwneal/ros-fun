@@ -39,11 +39,14 @@ def extract_visual_features(jpg_data, box):
 def get_example():
     x_img = np.zeros((MAX_WORDS, IMAGE_FEATURE_SIZE))
     x_words = np.zeros((MAX_WORDS,), dtype=int)
+    # Start token
+    x_words[:] = 2
     y = np.zeros(VOCABULARY_SIZE)
 
     jpg_data, box, text = dataset_grefexp.random_generation_example()
 
     img_features = extract_visual_features(jpg_data, box)
+    # NOTE: Scale to [0,1]
     if img_features.max() > 0:
         img_features /= img_features.max()
     x_img[:,:] = img_features
@@ -75,12 +78,12 @@ def demonstrate(model, all_zeros=False):
     X_img, X_word, Y = get_batch()
 
     if all_zeros:
-        X_word[:,:] = 0
-        X_word[:,-1] = 2  # START_TOKEN_IDX
+        X_word[:,:] = 2  # START_TOKEN_IDX
 
     visualizer = Visualizer(model)
     # Given some words, generate some more words
-    for i in range(0, MAX_WORDS * 2):
+    for i in range(0, MAX_WORDS-1):
+        import pdb; pdb.set_trace()
         next_word = model.predict([X_img, X_word])
         X_word = np.roll(X_word, -1, axis=1)
         X_word[:,-1] = np.argmax(next_word, axis=1)
@@ -97,6 +100,11 @@ def print_weight_stats(model):
     for w in model.get_weights():
         print w.shape, w.min(), w.max()
 
+def print_words(X, Y):
+    last_column = np.expand_dims(np.argmax(Y,axis=1),axis=0)
+    indices = np.concatenate((X, last_column.transpose()), axis=1)
+    for i in range(len(indices)):
+        print(nlp_api.indices_to_words(indices[i]))
 
 def train(model, **kwargs):
     start_time = time.time()
@@ -105,6 +113,10 @@ def train(model, **kwargs):
     for i in range(iters):
         X_img, X_word, Y = get_batch(**kwargs)
         loss += model.train_on_batch([X_img, X_word], Y)
+    #print("Expected:")
+    #print_words(X_word, Y)
+    #print("Actual:")
+    #print_words(X_word, model.predict([X_img, X_word]))
     loss /= iters
     print("Finished training for {} batches. Avg. loss: {}".format(iters, loss))
 
@@ -152,7 +164,7 @@ if __name__ == '__main__':
     resnet.init()
     # TODO: docopt or argparse
     learning_rate = float(sys.argv[2])
-    model.compile(loss='mse', optimizer='rmsprop', learning_rate=learning_rate)
+    model.compile(loss='mse', optimizer='rmsprop', learning_rate=learning_rate, decay=.001)
     model.summary()
     try:
         while True:
