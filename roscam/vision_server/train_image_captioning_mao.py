@@ -46,9 +46,6 @@ def get_example():
     jpg_data, box, text = dataset_grefexp.random_generation_example()
 
     img_features = extract_visual_features(jpg_data, box)
-    # NOTE: Scale to [0,1]
-    if img_features.max() > 0:
-        img_features /= img_features.max()
     x_img[:,:] = img_features
 
     # Train on one word in the sentence
@@ -83,7 +80,6 @@ def demonstrate(model, all_zeros=False):
     visualizer = Visualizer(model)
     # Given some words, generate some more words
     for i in range(0, MAX_WORDS-1):
-        import pdb; pdb.set_trace()
         next_word = model.predict([X_img, X_word])
         X_word = np.roll(X_word, -1, axis=1)
         X_word[:,-1] = np.argmax(next_word, axis=1)
