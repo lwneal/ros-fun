@@ -86,7 +86,13 @@ def compute_scores(model):
 
 
 def strip(text):
-    text = text.replace('000', '').replace('001', '')
+    # Remove the START_TOKEN
+    text = text.replace('000', '')
+    # Remove all text after the first END_TOKEN
+    end_idx = text.find('001')
+    if end_idx >= 0:
+        text = text[:end_idx]
+    # Remove non-alphanumeric characters and lowercase everything
     return re.sub(r'\W+', ' ', text.lower()).strip()
 
 
