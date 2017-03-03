@@ -74,22 +74,25 @@ def build_model():
 
     visual_input = Sequential()
     # Embed visual down to a smaller size
+    visual_input_shape = (None, None, IMAGE_FEATURE_SIZE)
+    visual_input.add(layers.BatchNormalization(batch_input_shape=visual_input_shape))
     visual_input.add(TimeDistributed(Dense(
         int(WORDVEC_DIM * ALPHA),
-        name='visual_embed'),
-        batch_input_shape=(None, None, IMAGE_FEATURE_SIZE)))
+        activation='relu',
+        name='visual_embed')))
+    visual_input.add(layers.BatchNormalization())
 
     word_input = Sequential()
     word_input.add(layers.Embedding(VOCABULARY_SIZE, WORDVEC_DIM, dropout=.5))
+    word_input.add(layers.BatchNormalization())
 
     model = Sequential()
     model.add(Merge([visual_input, word_input], mode='concat', concat_axis=2))
+    model.add(layers.BatchNormalization())
 
-    # Combined embedding
-    model.add(TimeDistributed(Dense(512, activation='tanh', name='joint_embed')))
-        
     model.add(LSTM(1024, name='lstm_1', return_sequences=False))
     model.add(layers.Dropout(.5))
+    model.add(layers.BatchNormalization())
 
     model.add(Dense(
         VOCABULARY_SIZE,
