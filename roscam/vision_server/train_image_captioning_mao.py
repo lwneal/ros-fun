@@ -59,11 +59,12 @@ def get_example():
 
 
 def get_batch(**kwargs):
-    x_img, x_words, y = get_example()
-    X_img = np.expand_dims(x_img, axis=0)
-    X_words = np.expand_dims(x_words, axis=0)
-    Y = np.expand_dims(y, axis=0)
-    return X_img, X_words, Y
+    while True:
+        x_img, x_words, y = get_example()
+        X_img = np.expand_dims(x_img, axis=0)
+        X_words = np.expand_dims(x_words, axis=0)
+        Y = np.expand_dims(y, axis=0)
+        yield [X_img, X_words], Y
 
 
 def demonstrate(model, visualize=False):
@@ -76,25 +77,21 @@ def demonstrate(model, visualize=False):
     print(nlp_api.indices_to_words(output))
 
 
+# TODO: Separate all code below this line into generic model trainer
 def train(model, **kwargs):
     start_time = time.time()
-    iters = 64
-    loss = 0
-    for i in range(iters):
-        X_img, X_word, Y = get_batch(**kwargs)
-        loss += model.train_on_batch([X_img, X_word], Y)
-    loss /= iters
-    print("Finished training for {} batches. Avg. loss: {}".format(iters, loss))
+    hist = model.fit_generator(get_batch(**kwargs), samples_per_epoch=2**8, nb_epoch=1)
 
-    print("Demonstration from mid-sentence")
     demonstrate(model)
 
-    return {
+    info = {
         'start_time': start_time,
         'duration': time.time() - start_time,
-        'loss': float(loss),
+        'loss': hist.history['loss'],
         'training_kwargs': kwargs,
     }
+    print(info)
+    return info
 
 
 def save_model_info(info_filename, info, model_filename):
@@ -128,7 +125,7 @@ if __name__ == '__main__':
     resnet.init()
     # TODO: docopt or argparse
     learning_rate = float(sys.argv[2])
-    model.compile(loss='mse', optimizer='rmsprop', learning_rate=learning_rate, decay=.0001)
+    model.compile(loss='mse', optimizer='rmsprop', learning_rate=learning_rate, decay=.0001, metrics=['accuracy'])
     model.summary()
     try:
         while True:
