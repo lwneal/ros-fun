@@ -40,23 +40,7 @@ def get_validation_set():
         resnet_preds = resnet.run(pixels)
         x = image_caption.extract_features_from_preds(resnet_preds, width, height, box)
         x = np.expand_dims(x, axis=0)
-        x = np.expand_dims(x, axis=0)
         yield x, texts
-
-
-def predict(model, x):
-    #BATCH_SIZE = 1
-    from networks.mao_net import MAX_WORDS
-    visual_input = np.zeros((1, MAX_WORDS, 4101))
-    visual_input[:] = x
-    word_indices = np.zeros((1, MAX_WORDS,), dtype=int)
-    # Set first word to start token
-    word_indices[:,:] = 2
-    for i in range(0, MAX_WORDS - 1):
-        next_word = model.predict([visual_input, word_indices])
-        word_indices = np.roll(word_indices, -1, axis=1)
-        word_indices[:,-1] = np.argmax(next_word, axis=1)
-    return word_indices[0,:]
 
 
 def evaluate(model):
@@ -71,16 +55,15 @@ def evaluate(model):
 def compute_scores(model):
     score_list = []
     for x, reference_texts in get_validation_set():
-        preds = predict(model, x)
-        #output_words = nlp_api.onehot_to_words(preds)
-        output_words = nlp_api.indices_to_words(preds)
-        candidate = strip(output_words)
+        indices = mao_net.predict(model, x, [nlp_api.START_TOKEN_IDX])
+
+        candidate = strip(nlp_api.indices_to_words(indices))
         references = [strip(r) for r in reference_texts]
 
         bleu1_score, bleu2_score = bleu(candidate, references)
         rouge_score = rouge([candidate], reference_texts)
 
-        print('{:.3f} {:.3f} {:.3f} {}'.format(bleu1_score, bleu2_score, rouge_score, candidate))
+        print('{:.3f} {:.3f} {:.3f} {} ({})'.format(bleu1_score, bleu2_score, rouge_score, candidate, references[0]))
         score_list.append((bleu1_score, bleu2_score, rouge_score))
     return zip(*score_list)
 

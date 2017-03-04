@@ -37,23 +37,22 @@ def extract_visual_features(jpg_data, box):
 
 
 def get_example():
-    # Start token
-    y = np.zeros(VOCABULARY_SIZE)
-
     jpg_data, box, text = dataset_grefexp.random_generation_example()
-
     img_features = extract_visual_features(jpg_data, box)
 
     # Train on one word in the sentence
     _, indices = nlp_api.words_to_vec(text)
-    start_idx = np.random.randint(0, len(indices) - 2)
-    end_idx = start_idx + np.random.randint(1, len(indices) - start_idx)
+    if len(indices) < 3:
+        print("Warning: invalid caption {}".format(text))
+        indices = indices + indices
+    word_count = np.random.randint(1, len(indices) - 1)
 
     # Input is a sequence of integers
-    word_count = end_idx - start_idx
-    x_words = np.array(indices[start_idx: end_idx])
+    x_words = np.array(indices[:word_count])
+
     # Output is a one-hot vector
-    target_word = indices[end_idx]
+    target_word = indices[word_count]
+    y = np.zeros(VOCABULARY_SIZE)
     y[target_word] = 1.0
 
     x_img = np.zeros((len(x_words), IMAGE_FEATURE_SIZE))
@@ -71,22 +70,12 @@ def get_batch(**kwargs):
 
 def demonstrate(model):
     print("Demonstration on {} images:".format(BATCH_SIZE))
-    visualizer = Visualizer(model)
+    #visualizer = Visualizer(model)
     for _ in range(4):
-        X_img, X_word, Y = get_batch()
-        # Given some words, generate some more words
-        for i in range(0, 12):
-            next_word = model.predict([X_img, X_word])
-            X_word = np.concatenate( (X_word, [np.argmax(next_word, axis=1)]), axis=1)
-            shape = list(X_img.shape)
-            shape[1] += 1
-            X_img = np.resize(X_img, shape)
-        for i in range(BATCH_SIZE):
-            print nlp_api.indices_to_words(X_word[i])
-
-    print("Model activations")
-    visualizer.run([X_img, X_word])
-
+        x_img, x_word, y = get_example()
+        output = mao_net.predict(model, x_img, x_word)
+        print(nlp_api.indices_to_words(output))
+        #visualizer.run([X_img, X_word])
     
 
 def print_weight_stats(model):
