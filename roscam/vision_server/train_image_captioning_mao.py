@@ -42,8 +42,9 @@ def get_example():
     _, indices = nlp_api.words_to_vec(text)
     if len(indices) < 3:
         print("Warning: invalid caption {}".format(text))
-        indices = indices + indices
-    word_count = np.random.randint(1, len(indices) - 1)
+        indices = nlp_api.words_to_vec('nothing')
+
+    word_count = np.random.randint(1, len(indices))
 
     # Input is a sequence of integers
     x_words = np.array(indices[:word_count])
@@ -71,7 +72,7 @@ def demonstrate(model, visualize=False):
     if visualize:
         visualizer = Visualizer(model)
     x_img, x_word, y = get_example()
-    output = mao_net.predict(model, x_img, x_word)
+    output = mao_net.predict(model, x_img[:,0,:], [nlp_api.START_TOKEN_IDX])
     if visualize:
         visualizer.run([X_img, X_word])
     print(nlp_api.indices_to_words(output))
@@ -82,7 +83,8 @@ def train(model, **kwargs):
     start_time = time.time()
     hist = model.fit_generator(get_batch(**kwargs), samples_per_epoch=2**8, nb_epoch=1)
 
-    demonstrate(model)
+    for _ in range(4):
+        demonstrate(model)
 
     info = {
         'start_time': start_time,
