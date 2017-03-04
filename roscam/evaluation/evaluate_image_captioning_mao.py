@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+"""
+Usage:
+        evaluate --model MODEL.h5 [--count COUNT]
+
+Options:
+        --model MODEL.h5    Path to saved HDF5 model compatible with keras.load_model
+        --count COUNT       Only evaluate using a subset of COUNT examples
+"""
+import docopt
 import re
 import random
 import os
@@ -29,8 +38,12 @@ def get_grefexp(key):
     return jpg_data, img_meta['width'], img_meta['height'], box, texts
 
 
-def get_validation_set():
+def get_validation_set(count=None):
     keys = dataset_grefexp.get_all_keys()
+    if count:
+        keys = list(keys)
+        random.shuffle(keys)
+        keys = keys[:count]
     print("Loaded {} validation examples".format(len(keys)))
     for key in keys:
         jpg_data, width, height, box, texts = get_grefexp(key)
@@ -43,18 +56,18 @@ def get_validation_set():
         yield x, texts
 
 
-def evaluate(model):
+def evaluate(model, **kwargs):
     score_names = ['BLEU1', 'BLEU2', 'ROUGE']
-    scores = compute_scores(model)
+    scores = compute_scores(model, **kwargs)
     for name, score_list in zip(score_names, scores):
         print name
         from scipy import stats
         print stats.describe(score_list)
 
 
-def compute_scores(model):
+def compute_scores(model, count=None):
     score_list = []
-    for x, reference_texts in get_validation_set():
+    for x, reference_texts in get_validation_set(count=count):
         indices = mao_net.predict(model, x, [nlp_api.START_TOKEN_IDX])
 
         candidate = strip(nlp_api.indices_to_words(indices))
@@ -89,9 +102,11 @@ def rouge(candidate, references):
 
 
 if __name__ == '__main__':
-    input_filename = sys.argv[1]
-    if len(sys.argv) > 2:
-        input_filename = sys.argv[2]
+    opt = docopt.docopt(__doc__)
+    model_filename = opt['--model']
+    count = opt['--count']
+    if count:
+        count = int(count)
 
-    model = load_model(input_filename)
-    evaluate(model)
+    model = load_model(model_filename)
+    evaluate(model, count=count)
