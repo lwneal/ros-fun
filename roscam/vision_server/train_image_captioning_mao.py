@@ -15,8 +15,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from keras import models
 from keras import layers
-# TODO: move to shared?
-from nlp_server import word_vector
 
 from shared import util
 from shared import nlp_api
@@ -25,7 +23,7 @@ import resnet
 from datasets import dataset_grefexp
 from interfaces import image_caption
 from networks import mao_net
-from networks.mao_net import BATCH_SIZE, WORDVEC_DIM, IMAGE_FEATURE_SIZE
+from networks.mao_net import WORDVEC_DIM, IMAGE_FEATURE_SIZE
 from interfaces.image_caption import VOCABULARY_SIZE
 
 
@@ -68,25 +66,15 @@ def get_batch(**kwargs):
     return X_img, X_words, Y
 
 
-def demonstrate(model):
-    print("Demonstration on {} images:".format(BATCH_SIZE))
-    #visualizer = Visualizer(model)
-    for _ in range(4):
-        x_img, x_word, y = get_example()
-        output = mao_net.predict(model, x_img, x_word)
-        print(nlp_api.indices_to_words(output))
-        #visualizer.run([X_img, X_word])
-    
+def demonstrate(model, visualize=False):
+    if visualize:
+        visualizer = Visualizer(model)
+    x_img, x_word, y = get_example()
+    output = mao_net.predict(model, x_img, x_word)
+    if visualize:
+        visualizer.run([X_img, X_word])
+    print(nlp_api.indices_to_words(output))
 
-def print_weight_stats(model):
-    for w in model.get_weights():
-        print w.shape, w.min(), w.max()
-
-def print_words(X, Y):
-    last_column = np.expand_dims(np.argmax(Y,axis=1),axis=0)
-    indices = np.concatenate((X, last_column.transpose()), axis=1)
-    for i in range(len(indices)):
-        print(nlp_api.indices_to_words(indices[i]))
 
 def train(model, **kwargs):
     start_time = time.time()
