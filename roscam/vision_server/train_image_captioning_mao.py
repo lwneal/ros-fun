@@ -25,7 +25,7 @@ import resnet
 from datasets import dataset_grefexp
 from interfaces import image_caption
 from networks import mao_net
-from networks.mao_net import BATCH_SIZE, WORDVEC_DIM, IMAGE_FEATURE_SIZE, MAX_WORDS
+from networks.mao_net import BATCH_SIZE, WORDVEC_DIM, IMAGE_FEATURE_SIZE
 from interfaces.image_caption import VOCABULARY_SIZE
 
 
@@ -37,59 +37,56 @@ def extract_visual_features(jpg_data, box):
 
 
 def get_example():
-    x_img = np.zeros((MAX_WORDS, IMAGE_FEATURE_SIZE))
-    x_words = np.zeros((MAX_WORDS,), dtype=int)
     # Start token
-    x_words[:] = 2
     y = np.zeros(VOCABULARY_SIZE)
 
     jpg_data, box, text = dataset_grefexp.random_generation_example()
 
     img_features = extract_visual_features(jpg_data, box)
-    x_img[:,:] = img_features
 
     # Train on one word in the sentence
     _, indices = nlp_api.words_to_vec(text)
-    end_idx = random.randint(1, len(indices) - 1)
-    start_idx = max(0, end_idx - MAX_WORDS)
-    word_count = end_idx - start_idx
+    start_idx = np.random.randint(0, len(indices) - 2)
+    end_idx = start_idx + np.random.randint(1, len(indices) - start_idx)
 
     # Input is a sequence of integers
-    x_words[-word_count:] = indices[start_idx: end_idx]
-    target_word = indices[end_idx]
+    word_count = end_idx - start_idx
+    x_words = np.array(indices[start_idx: end_idx])
     # Output is a one-hot vector
+    target_word = indices[end_idx]
     y[target_word] = 1.0
+
+    x_img = np.zeros((len(x_words), IMAGE_FEATURE_SIZE))
+    x_img[:,:] = img_features
     return x_img, x_words, y
 
 
 def get_batch(**kwargs):
-    X_img = np.zeros((BATCH_SIZE, MAX_WORDS, IMAGE_FEATURE_SIZE))
-    X_word = np.zeros((BATCH_SIZE, MAX_WORDS), dtype=int)
-    Y = np.zeros((BATCH_SIZE, VOCABULARY_SIZE))
-    for i in range(BATCH_SIZE):
-        X_img[i], X_word[i], Y[i] = get_example()
-    return X_img, X_word, Y
+    x_img, x_words, y = get_example()
+    X_img = np.expand_dims(x_img, axis=0)
+    X_words = np.expand_dims(x_words, axis=0)
+    Y = np.expand_dims(y, axis=0)
+    return X_img, X_words, Y
 
 
-def demonstrate(model, all_zeros=False):
-    X_img, X_word, Y = get_batch()
-
-    if all_zeros:
-        X_word[:,:] = 2  # START_TOKEN_IDX
-
+def demonstrate(model):
+    print("Demonstration on {} images:".format(BATCH_SIZE))
     visualizer = Visualizer(model)
-    # Given some words, generate some more words
-    for i in range(0, MAX_WORDS-1):
-        next_word = model.predict([X_img, X_word])
-        X_word = np.roll(X_word, -1, axis=1)
-        X_word[:,-1] = np.argmax(next_word, axis=1)
+    for _ in range(4):
+        X_img, X_word, Y = get_batch()
+        # Given some words, generate some more words
+        for i in range(0, 12):
+            next_word = model.predict([X_img, X_word])
+            X_word = np.concatenate( (X_word, [np.argmax(next_word, axis=1)]), axis=1)
+            shape = list(X_img.shape)
+            shape[1] += 1
+            X_img = np.resize(X_img, shape)
+        for i in range(BATCH_SIZE):
+            print nlp_api.indices_to_words(X_word[i])
 
     print("Model activations")
     visualizer.run([X_img, X_word])
 
-    print("Demonstration on {} images:".format(BATCH_SIZE))
-    for i in range(BATCH_SIZE):
-        print nlp_api.indices_to_words(X_word[i])
     
 
 def print_weight_stats(model):
@@ -109,17 +106,11 @@ def train(model, **kwargs):
     for i in range(iters):
         X_img, X_word, Y = get_batch(**kwargs)
         loss += model.train_on_batch([X_img, X_word], Y)
-    #print("Expected:")
-    #print_words(X_word, Y)
-    #print("Actual:")
-    #print_words(X_word, model.predict([X_img, X_word]))
     loss /= iters
     print("Finished training for {} batches. Avg. loss: {}".format(iters, loss))
 
     print("Demonstration from mid-sentence")
     demonstrate(model)
-    print("Demonstration from start token")
-    demonstrate(model, all_zeros=True)
 
     return {
         'start_time': start_time,
@@ -160,7 +151,7 @@ if __name__ == '__main__':
     resnet.init()
     # TODO: docopt or argparse
     learning_rate = float(sys.argv[2])
-    model.compile(loss='mse', optimizer='rmsprop', learning_rate=learning_rate, decay=.001)
+    model.compile(loss='mse', optimizer='rmsprop', learning_rate=learning_rate, decay=.0001)
     model.summary()
     try:
         while True:

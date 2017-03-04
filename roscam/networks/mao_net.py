@@ -17,7 +17,7 @@ from shared import util
 from interfaces.image_caption import MAX_OUTPUT_WORDS
 from shared.nlp_api import VOCABULARY_SIZE
 
-BATCH_SIZE=16
+BATCH_SIZE=1
 IMAGE_FEATURE_SIZE = 4101
 MAX_WORDS = 8
 WORDVEC_DIM = 100
