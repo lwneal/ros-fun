@@ -51,6 +51,7 @@ def get_validation_set(count=None):
         pixels = util.decode_jpg(jpg_data)
         resnet_preds = resnet.run(pixels)
         x = image_caption.extract_features_from_preds(resnet_preds, width, height, box)
+        x = np.expand_dims(x, axis=0)
         yield x, texts
 
 

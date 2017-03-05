@@ -21,20 +21,18 @@ def build_model():
     # Input: The 4101-dim feature from extract_features, and the previous output word
 
     visual_input = models.Sequential()
-    visual_input_shape = (IMAGE_FEATURE_SIZE,)
-    visual_input.add(layers.Dense(
+    visual_input_shape = (None, IMAGE_FEATURE_SIZE)
+    visual_input.add(layers.TimeDistributed(layers.Dense(
         WORDVEC_DIM,
         activation='relu',
-        name='visual_embed',
+        name='visual_embed'),
         input_shape=visual_input_shape))
-    visual_input.add(layers.Reshape(
-        (1, WORDVEC_DIM)))
 
     word_input = models.Sequential()
     word_input.add(layers.Embedding(VOCABULARY_SIZE, WORDVEC_DIM, dropout=.5))
 
     model = models.Sequential()
-    model.add(layers.Merge([visual_input, word_input], mode='concat', concat_axis=1))
+    model.add(layers.Merge([visual_input, word_input], mode='concat', concat_axis=2))
 
     model.add(layers.LSTM(1024, name='lstm_1', return_sequences=False))
     model.add(layers.Dropout(.5))

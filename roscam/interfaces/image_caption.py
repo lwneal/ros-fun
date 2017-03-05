@@ -91,6 +91,7 @@ def predict(model, x_img, x_word, timesteps=10):
         preds = model.predict([X_img, X_word])
         next_word = np.argmax(preds, axis=1)
         X_word = np.concatenate([X_word, [next_word]], axis=1)
+        X_img = util.extend(X_img)
         if next_word[0] == END_TOKEN_IDX:
             break
     return X_word[0]

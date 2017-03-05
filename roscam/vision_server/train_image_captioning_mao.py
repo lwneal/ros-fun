@@ -55,6 +55,8 @@ def get_example():
     y = np.zeros(VOCABULARY_SIZE)
     y[target_word] = 1.0
 
+    x_img = np.expand_dims(x_img, axis=0)
+    x_img = np.repeat(x_img, repeats=word_count, axis=0)
     return x_img, x_words, y
 
 
@@ -71,7 +73,7 @@ def demonstrate(model, visualize=False):
     if visualize:
         visualizer = Visualizer(model)
     x_img, x_word, y = get_example()
-    output = predict(model, x_img, [START_TOKEN_IDX])
+    output = predict(model, x_img[0:1], [START_TOKEN_IDX])
     if visualize:
         visualizer.run([X_img, X_word])
     print(nlp_api.indices_to_words(output))
@@ -80,7 +82,6 @@ def demonstrate(model, visualize=False):
 # TODO: Separate all code below this line into generic model trainer
 def train(model, **kwargs):
     start_time = time.time()
-    next(get_batch(**kwargs))
     hist = model.fit_generator(get_batch(**kwargs), samples_per_epoch=2**8, nb_epoch=1)
 
     demonstrate(model)
