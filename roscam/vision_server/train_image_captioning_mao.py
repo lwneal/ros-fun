@@ -26,6 +26,7 @@ from networks import mao_net
 from networks.mao_net import WORDVEC_DIM, IMAGE_FEATURE_SIZE
 from interfaces.image_caption import VOCABULARY_SIZE
 from interfaces.image_caption import predict
+from interfaces import image_caption
 from shared.nlp_api import START_TOKEN_IDX
 
 
@@ -46,14 +47,20 @@ def get_example():
         print("Warning: invalid caption {}".format(text))
         indices = nlp_api.words_to_vec('nothing')
 
-    # Input is a sequence of integers
-    word_count = np.random.randint(1, len(indices))
-    x_words = np.array(indices[:word_count])
+    # Important: Select a subset slice of input text
+    start_idx = 0
+    #start_idx = np.random.randint(0, len(indices) - 2)
+    word_count = np.random.randint(1, len(indices) - start_idx)
+    x_words = np.array(indices[start_idx:start_idx + word_count])
 
     # Output is a one-hot vector
-    target_word = indices[word_count]
+    target_word = indices[start_idx+word_count]
+    #print nlp_api.indices_to_words(x_words)
     y = np.zeros(VOCABULARY_SIZE)
-    y[target_word] = 1.0
+    try:
+        y[target_word] = 1.0
+    except Exception as e:
+        import pdb; pdb.set_trace()
 
     x_img = np.expand_dims(x_img, axis=0)
     x_img = np.repeat(x_img, repeats=word_count, axis=0)
