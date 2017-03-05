@@ -105,6 +105,7 @@ def example_mao():
     preds = resnet.run(pixels)
     width, height, _ = pixels.shape
     x_img = extract_features_from_preds(preds, width, height, box)
+    x_img /= (x_img.max() + .1)
 
     # Train on one word in the sentence
     _, indices = nlp_api.words_to_vec(text)

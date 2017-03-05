@@ -46,6 +46,7 @@ def get_validation_set(count=None):
     print("Loaded {} validation examples".format(len(keys)))
     for key in keys:
         jpg_data, width, height, box, texts = get_grefexp(key)
+        # TODO: move all this into interfaces/
         from vision_server import resnet
         resnet.init()
         pixels = util.decode_jpg(jpg_data)
