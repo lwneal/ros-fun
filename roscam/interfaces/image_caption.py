@@ -8,10 +8,12 @@ from keras.models import load_model
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from vision_server import resnet
 from shared import nlp_api
 from shared import vision_api
 from shared import util
 from shared.nlp_api import VOCABULARY_SIZE, END_TOKEN_IDX
+from datasets import dataset_grefexp
 
 model = None
 
@@ -96,3 +98,17 @@ def predict(model, x_img, x_word, timesteps=10):
             break
     return X_word[0]
 
+
+def example_mao():
+    jpg_data, box, text = dataset_grefexp.random_generation_example()
+    pixels = util.decode_jpg(jpg_data)
+    preds = resnet.run(pixels)
+    width, height, _ = pixels.shape
+    x_img = extract_features_from_preds(preds, width, height, box)
+
+    # Train on one word in the sentence
+    _, indices = nlp_api.words_to_vec(text)
+    if len(indices) < 3:
+        print("Warning: invalid caption {}".format(text))
+        indices = nlp_api.words_to_vec('nothing')
+    return x_img, indices

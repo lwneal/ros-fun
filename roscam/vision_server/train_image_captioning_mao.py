@@ -30,22 +30,8 @@ from interfaces import image_caption
 from shared.nlp_api import START_TOKEN_IDX
 
 
-def extract_visual_features(jpg_data, box):
-    pixels = util.decode_jpg(jpg_data)
-    preds = resnet.run(pixels)
-    width, height, _ = pixels.shape
-    return image_caption.extract_features_from_preds(preds, width, height, box)
-
-
 def get_example():
-    jpg_data, box, text = dataset_grefexp.random_generation_example()
-    x_img = extract_visual_features(jpg_data, box)
-
-    # Train on one word in the sentence
-    _, indices = nlp_api.words_to_vec(text)
-    if len(indices) < 3:
-        print("Warning: invalid caption {}".format(text))
-        indices = nlp_api.words_to_vec('nothing')
+    x_img, indices = image_caption.example_mao()
 
     # Important: Select a subset slice of input text
     start_idx = 0
@@ -89,9 +75,11 @@ def demonstrate(model, visualize=False):
 # TODO: Separate all code below this line into generic model trainer
 def train(model, **kwargs):
     start_time = time.time()
+    next(get_batch(**kwargs))
     hist = model.fit_generator(get_batch(**kwargs), samples_per_epoch=2**8, nb_epoch=1)
 
-    demonstrate(model)
+    for _ in range(4):
+        demonstrate(model)
 
     info = {
         'start_time': start_time,
