@@ -10,29 +10,10 @@ import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from shared import util
-from shared.nlp_api import VOCABULARY_SIZE, END_TOKEN_IDX
+from shared.nlp_api import VOCABULARY_SIZE
 
 IMAGE_FEATURE_SIZE = 4101
 WORDVEC_DIM = 100
-
-
-def predict(model, x_img, x_word, timesteps=10):
-    X_img = np.expand_dims(x_img, axis=0)
-    X_word = np.expand_dims(x_word, axis=0)
-    for _ in range(timesteps):
-        preds = model.predict([X_img, X_word])
-        next_word = np.argmax(preds, axis=1)
-        X_word = np.concatenate([X_word, [next_word]], axis=1)
-        X_img = extend(X_img)
-        if next_word[0] == END_TOKEN_IDX:
-            break
-    return X_word[0]
-
-
-def extend(X, axis=1, extend_by=1):
-    shape = list(X.shape)
-    shape[axis] += extend_by
-    return np.resize(X, shape)
 
 
 def build_model():

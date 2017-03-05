@@ -46,6 +46,12 @@ def rescale(image, shape):
     return imresize(image, shape).astype(float)
 
 
+def extend(X, axis=1, extend_by=1):
+    shape = list(X.shape)
+    shape[axis] += extend_by
+    return np.resize(X, shape)
+
+
 def build_detection_visualization(frame_jpg, preds, caption=None):
     pixels = decode_jpg(frame_jpg)
 

@@ -25,6 +25,7 @@ from interfaces import image_caption
 from networks import mao_net
 from networks.mao_net import WORDVEC_DIM, IMAGE_FEATURE_SIZE
 from interfaces.image_caption import VOCABULARY_SIZE
+from interfaces.image_caption import predict
 from shared.nlp_api import START_TOKEN_IDX
 
 
@@ -70,7 +71,7 @@ def demonstrate(model, visualize=False):
     if visualize:
         visualizer = Visualizer(model)
     x_img, x_word, y = get_example()
-    output = mao_net.predict(model, x_img, [START_TOKEN_IDX])
+    output = predict(model, x_img, [START_TOKEN_IDX])
     if visualize:
         visualizer.run([X_img, X_word])
     print(nlp_api.indices_to_words(output))

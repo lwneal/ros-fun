@@ -27,7 +27,6 @@ from shared import util
 from shared import nlp_api
 from datasets import dataset_grefexp
 from interfaces import image_caption
-from networks import mao_net
 
 
 def get_grefexp(key):
@@ -67,7 +66,7 @@ def evaluate(model, **kwargs):
 def compute_scores(model, count=None):
     score_list = []
     for x, reference_texts in get_validation_set(count=count):
-        indices = mao_net.predict(model, x, [nlp_api.START_TOKEN_IDX])
+        indices = image_caption.predict(model, x, [nlp_api.START_TOKEN_IDX])
 
         candidate = strip(nlp_api.indices_to_words(indices))
         references = [strip(r) for r in reference_texts]

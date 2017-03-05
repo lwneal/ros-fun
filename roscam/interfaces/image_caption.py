@@ -11,7 +11,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from shared import nlp_api
 from shared import vision_api
 from shared import util
-from shared.nlp_api import VOCABULARY_SIZE
+from shared.nlp_api import VOCABULARY_SIZE, END_TOKEN_IDX
 
 model = None
 
@@ -82,3 +82,16 @@ def extract_features_from_preds(resnet_preds, img_height, img_width, bbox, pad_t
         padding[0] = visual_input
         return padding
     return visual_input
+
+
+def predict(model, x_img, x_word, timesteps=10):
+    X_img = np.expand_dims(x_img, axis=0)
+    X_word = np.expand_dims(x_word, axis=0)
+    for _ in range(timesteps):
+        preds = model.predict([X_img, X_word])
+        next_word = np.argmax(preds, axis=1)
+        X_word = np.concatenate([X_word, [next_word]], axis=1)
+        if next_word[0] == END_TOKEN_IDX:
+            break
+    return X_word[0]
+
