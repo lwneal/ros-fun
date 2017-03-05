@@ -62,9 +62,9 @@ def demonstrate(model, visualize=False):
     if visualize:
         visualizer = Visualizer(model)
     x_img, x_word, y = get_example()
-    output = predict(model, x_img[0:1], [START_TOKEN_IDX])
+    output = predict(model, x_img[:1], [START_TOKEN_IDX])
     if visualize:
-        visualizer.run([X_img, X_word])
+        visualizer.run([np.expand_dims(x_img[:1], axis=0), np.expand_dims([START_TOKEN_IDX], axis=0)])
     print(nlp_api.indices_to_words(output))
 
 
@@ -74,8 +74,8 @@ def train(model, **kwargs):
     next(get_batch(**kwargs))
     hist = model.fit_generator(get_batch(**kwargs), samples_per_epoch=2**8, nb_epoch=1)
 
-    for _ in range(4):
-        demonstrate(model)
+    for _ in range(2):
+        demonstrate(model, visualize=True)
 
     info = {
         'start_time': start_time,
