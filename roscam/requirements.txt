@@ -9,3 +9,4 @@ pycapnp
 requests
 scikit-image
 nltk
+docopt

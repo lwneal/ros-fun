@@ -25,6 +25,7 @@ from interfaces import image_caption
 from networks import mao_net
 from networks.mao_net import WORDVEC_DIM, IMAGE_FEATURE_SIZE
 from interfaces.image_caption import VOCABULARY_SIZE
+from shared.nlp_api import START_TOKEN_IDX
 
 
 def extract_visual_features(jpg_data, box):
@@ -36,7 +37,7 @@ def extract_visual_features(jpg_data, box):
 
 def get_example():
     jpg_data, box, text = dataset_grefexp.random_generation_example()
-    img_features = extract_visual_features(jpg_data, box)
+    x_img = extract_visual_features(jpg_data, box)
 
     # Train on one word in the sentence
     _, indices = nlp_api.words_to_vec(text)
@@ -44,9 +45,8 @@ def get_example():
         print("Warning: invalid caption {}".format(text))
         indices = nlp_api.words_to_vec('nothing')
 
-    word_count = np.random.randint(1, len(indices))
-
     # Input is a sequence of integers
+    word_count = np.random.randint(1, len(indices))
     x_words = np.array(indices[:word_count])
 
     # Output is a one-hot vector
@@ -54,8 +54,6 @@ def get_example():
     y = np.zeros(VOCABULARY_SIZE)
     y[target_word] = 1.0
 
-    x_img = np.zeros((len(x_words), IMAGE_FEATURE_SIZE))
-    x_img[:,:] = img_features
     return x_img, x_words, y
 
 
@@ -72,7 +70,7 @@ def demonstrate(model, visualize=False):
     if visualize:
         visualizer = Visualizer(model)
     x_img, x_word, y = get_example()
-    output = mao_net.predict(model, x_img[:,0,:], [nlp_api.START_TOKEN_IDX])
+    output = mao_net.predict(model, x_img, [START_TOKEN_IDX])
     if visualize:
         visualizer.run([X_img, X_word])
     print(nlp_api.indices_to_words(output))
@@ -81,10 +79,10 @@ def demonstrate(model, visualize=False):
 # TODO: Separate all code below this line into generic model trainer
 def train(model, **kwargs):
     start_time = time.time()
+    next(get_batch(**kwargs))
     hist = model.fit_generator(get_batch(**kwargs), samples_per_epoch=2**8, nb_epoch=1)
 
-    for _ in range(4):
-        demonstrate(model)
+    demonstrate(model)
 
     info = {
         'start_time': start_time,

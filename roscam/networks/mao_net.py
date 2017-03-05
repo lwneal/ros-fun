@@ -1,12 +1,8 @@
 import sys
 import os
 import tensorflow as tf
-from keras.models import Sequential
-from keras.layers import LSTM, Dense, TimeDistributed, Activation, Dropout, Merge
-from keras.layers import BatchNormalization
-from keras.layers import Masking
-from keras.models import Model
-from keras.layers import Input
+from keras import layers
+from keras import models
 from keras import layers
 from keras import backend as K
 import numpy as np
@@ -14,11 +10,9 @@ import numpy as np
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from shared import util
-from interfaces.image_caption import MAX_OUTPUT_WORDS
 from shared.nlp_api import VOCABULARY_SIZE, END_TOKEN_IDX
 
 IMAGE_FEATURE_SIZE = 4101
-MAX_WORDS = 8
 WORDVEC_DIM = 100
 
 
@@ -45,27 +39,26 @@ def build_model():
     # As described in https://arxiv.org/abs/1511.02283
     # Input: The 4101-dim feature from extract_features, and the previous output word
 
-    # Hyperparameter: 
-    ALPHA = 0.5
-
-    visual_input = Sequential()
-    # Embed visual down to a smaller size
-    visual_input_shape = (None, None, IMAGE_FEATURE_SIZE)
-    visual_input.add(TimeDistributed(Dense(
-        int(WORDVEC_DIM * ALPHA),
+    visual_input = models.Sequential()
+    visual_input_shape = (IMAGE_FEATURE_SIZE,)
+    visual_input.add(layers.Dense(
+        WORDVEC_DIM,
         activation='relu',
-        name='visual_embed'), batch_input_shape=visual_input_shape))
+        name='visual_embed',
+        input_shape=visual_input_shape))
+    visual_input.add(layers.Reshape(
+        (1, WORDVEC_DIM)))
 
-    word_input = Sequential()
+    word_input = models.Sequential()
     word_input.add(layers.Embedding(VOCABULARY_SIZE, WORDVEC_DIM, dropout=.5))
 
-    model = Sequential()
-    model.add(Merge([visual_input, word_input], mode='concat', concat_axis=2))
+    model = models.Sequential()
+    model.add(layers.Merge([visual_input, word_input], mode='concat', concat_axis=1))
 
-    model.add(LSTM(1024, name='lstm_1', return_sequences=False))
+    model.add(layers.LSTM(1024, name='lstm_1', return_sequences=False))
     model.add(layers.Dropout(.5))
 
-    model.add(Dense(
+    model.add(layers.Dense(
         VOCABULARY_SIZE,
         activation='softmax',
         name='embed_out'))

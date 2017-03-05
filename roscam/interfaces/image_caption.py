@@ -13,8 +13,6 @@ from shared import vision_api
 from shared import util
 from shared.nlp_api import VOCABULARY_SIZE
 
-MAX_OUTPUT_WORDS = 12
-
 model = None
 
 def init(filename):
