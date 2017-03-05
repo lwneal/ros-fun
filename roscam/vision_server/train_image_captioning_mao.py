@@ -41,12 +41,8 @@ def get_example():
 
     # Output is a one-hot vector
     target_word = indices[start_idx+word_count]
-    #print nlp_api.indices_to_words(x_words)
     y = np.zeros(VOCABULARY_SIZE)
-    try:
-        y[target_word] = 1.0
-    except Exception as e:
-        import pdb; pdb.set_trace()
+    y[target_word] = 1.0
 
     x_img = np.expand_dims(x_img, axis=0)
     x_img = np.repeat(x_img, repeats=word_count, axis=0)

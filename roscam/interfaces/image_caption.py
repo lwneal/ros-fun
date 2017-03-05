@@ -111,5 +111,5 @@ def example_mao():
     _, indices = nlp_api.words_to_vec(text)
     if len(indices) < 3:
         print("Warning: invalid caption {}".format(text))
-        indices = nlp_api.words_to_vec('nothing')
+        _, indices = nlp_api.words_to_vec('nothing')
     return x_img, indices
