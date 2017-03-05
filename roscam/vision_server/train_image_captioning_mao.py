@@ -118,7 +118,7 @@ if __name__ == '__main__':
     resnet.init()
     # TODO: docopt or argparse
     learning_rate = float(sys.argv[2])
-    model.compile(loss='mse', optimizer='rmsprop', learning_rate=learning_rate, decay=.0001, metrics=['accuracy'])
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop', learning_rate=learning_rate, decay=.0001, metrics=['accuracy'])
     model.summary()
     try:
         while True:
